@@ -58,28 +58,34 @@
     </nav>
   </header>
 
-  <!-- 5 Index Sub-Tabs inside Options -->
-  <div id="fno-filters" class="max-w-md mx-auto px-4 pt-3 flex gap-1.5 overflow-x-auto text-xs">
-    <button onclick="setIndexMode('NIFTY')" id="idx-NIFTY" class="py-1.5 px-2.5 rounded-xl subtab-active flex items-center justify-center gap-1 shrink-0">
-      <span>NIFTY</span>
-      <span id="best-NIFTY" class="px-1.5 py-0.5 rounded bg-black/25 text-[10px] font-extrabold">--%</span>
-    </button>
-    <button onclick="setIndexMode('BANKNIFTY')" id="idx-BANKNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
-      <span>BANKNIFTY</span>
-      <span id="best-BANKNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
-    </button>
-    <button onclick="setIndexMode('SENSEX')" id="idx-SENSEX" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
-      <span>SENSEX</span>
-      <span id="best-SENSEX" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
-    </button>
-    <button onclick="setIndexMode('FINNIFTY')" id="idx-FINNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
-      <span>FINNIFTY</span>
-      <span id="best-FINNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
-    </button>
-    <button onclick="setIndexMode('MIDCPNIFTY')" id="idx-MIDCPNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
-      <span>MIDCPNIFTY</span>
-      <span id="best-MIDCPNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
-    </button>
+  <!-- 5 Index Sub-Tabs + Scalping Toggle inside Options -->
+  <div id="fno-filters" class="max-w-md mx-auto px-4 pt-3 space-y-2 text-xs">
+    <div class="flex gap-1.5 overflow-x-auto">
+      <button onclick="setIndexMode('NIFTY')" id="idx-NIFTY" class="py-1.5 px-2.5 rounded-xl subtab-active flex items-center justify-center gap-1 shrink-0">
+        <span>NIFTY</span>
+        <span id="best-NIFTY" class="px-1.5 py-0.5 rounded bg-black/25 text-[10px] font-extrabold">--%</span>
+      </button>
+      <button onclick="setIndexMode('BANKNIFTY')" id="idx-BANKNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
+        <span>BANKNIFTY</span>
+        <span id="best-BANKNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
+      </button>
+      <button onclick="setIndexMode('SENSEX')" id="idx-SENSEX" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
+        <span>SENSEX</span>
+        <span id="best-SENSEX" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
+      </button>
+      <button onclick="setIndexMode('FINNIFTY')" id="idx-FINNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
+        <span>FINNIFTY</span>
+        <span id="best-FINNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
+      </button>
+      <button onclick="setIndexMode('MIDCPNIFTY')" id="idx-MIDCPNIFTY" class="py-1.5 px-2.5 rounded-xl subtab-inactive flex items-center justify-center gap-1 shrink-0">
+        <span>MIDCPNIFTY</span>
+        <span id="best-MIDCPNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
+      </button>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="setFnoStyle('ALL')" id="fstyle-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold">All Scripts</button>
+      <button onclick="setFnoStyle('SCALP')" id="fstyle-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]">Scalping ⚡</button>
+    </div>
   </div>
 
   <!-- Stock Sub-Tabs -->
@@ -99,8 +105,8 @@
     <div class="bg-[#131722] border-t sm:border border-[#2a3449] w-full max-w-md rounded-t-2xl sm:rounded-2xl p-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-[#1e2536] pb-3">
         <div>
-          <h2 id="modal-title" class="text-base font-bold text-white">NIFTY 24650 CE</h2>
-          <p id="modal-sub" class="text-xs text-emerald-400">Profit Chance: 82% | Loss Chance: 18%</p>
+          <h2 id="modal-title" class="text-base font-bold text-white">NIFTY 25250 CE</h2>
+          <p id="modal-sub" class="text-xs text-emerald-400">Profit Chance: 84% | Loss Chance: 16%</p>
         </div>
         <button onclick="closeModal()" class="px-2.5 py-1 rounded-lg bg-[#1e2536] text-slate-300 text-xs">Close</button>
       </div>
@@ -140,10 +146,18 @@
   <script>
     const TABS = ['fno', 'stocks', 'trades'];
     const INDEX_TABS = ['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'MIDCPNIFTY'];
-    const CACHE_KEY = 'vectra_signals_cache_v2';
+    const INDEX_META = {
+      NIFTY: { spot: 25250, step: 50, lot: 75, baseLtp: 142 },
+      BANKNIFTY: { spot: 52400, step: 100, lot: 30, baseLtp: 215 },
+      SENSEX: { spot: 81200, step: 100, lot: 20, baseLtp: 268 },
+      FINNIFTY: { spot: 24100, step: 50, lot: 65, baseLtp: 128 },
+      MIDCPNIFTY: { spot: 12850, step: 25, lot: 120, baseLtp: 94 }
+    };
+    const CACHE_KEY = 'vectra_signals_cache_v3';
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
     let indexMode = 'NIFTY';
+    let fnoStyle = 'ALL';
     let stockMode = 'ALL';
     let selectedSignal = null;
     let activeStrategy = null;
@@ -244,34 +258,92 @@
       renderAll();
     }
 
-    const DEFAULT_FNO_SETUPS = [
-      { symbol: "NIFTY 25250 CE", is_fno: true, side: "BUY", ltp: 142.50, win_prob: 84, loss_prob: 16, entry: 143.50, target: 185.00, sl: 122.00, lot_size: 75 },
-      { symbol: "NIFTY 25250 PE", is_fno: true, side: "BUY", ltp: 118.00, win_prob: 71, loss_prob: 29, entry: 119.50, target: 152.00, sl: 102.00, lot_size: 75 },
-      { symbol: "NIFTY 25300 CE", is_fno: true, side: "BUY", ltp: 109.00, win_prob: 66, loss_prob: 34, entry: 110.00, target: 138.00, sl: 95.00, lot_size: 75 },
-      { symbol: "BANKNIFTY 52400 PE", is_fno: true, side: "BUY", ltp: 210.00, win_prob: 79, loss_prob: 21, entry: 212.00, target: 275.00, sl: 180.00, lot_size: 30 },
-      { symbol: "BANKNIFTY 52400 CE", is_fno: true, side: "BUY", ltp: 196.00, win_prob: 68, loss_prob: 32, entry: 198.00, target: 248.00, sl: 172.00, lot_size: 30 },
-      { symbol: "SENSEX 81200 CE", is_fno: true, side: "BUY", ltp: 265.00, win_prob: 76, loss_prob: 24, entry: 268.00, target: 345.00, sl: 228.00, lot_size: 20 },
-      { symbol: "SENSEX 81200 PE", is_fno: true, side: "BUY", ltp: 234.00, win_prob: 63, loss_prob: 37, entry: 236.00, target: 292.00, sl: 205.00, lot_size: 20 },
-      { symbol: "FINNIFTY 24100 CE", is_fno: true, side: "BUY", ltp: 128.00, win_prob: 75, loss_prob: 25, entry: 129.50, target: 164.00, sl: 111.00, lot_size: 65 },
-      { symbol: "FINNIFTY 24100 PE", is_fno: true, side: "BUY", ltp: 106.00, win_prob: 61, loss_prob: 39, entry: 107.50, target: 135.00, sl: 92.00, lot_size: 65 },
-      { symbol: "MIDCPNIFTY 12850 CE", is_fno: true, side: "BUY", ltp: 94.00, win_prob: 73, loss_prob: 27, entry: 95.00, target: 122.00, sl: 81.00, lot_size: 120 },
-      { symbol: "MIDCPNIFTY 12850 PE", is_fno: true, side: "BUY", ltp: 82.00, win_prob: 59, loss_prob: 41, entry: 83.00, target: 105.00, sl: 71.00, lot_size: 120 }
-    ];
+    function generateFullIndexSetups() {
+      const list = [];
+      const offsets = [-3, -2, -1, 0, 1, 2, 3];
+      const types = ['CE', 'PE'];
+
+      INDEX_TABS.forEach((idxName, idxPos) => {
+        const meta = INDEX_META[idxName];
+        const baseSpot = Math.round(meta.spot / meta.step) * meta.step;
+
+        offsets.forEach((off, oIdx) => {
+          const strike = baseSpot + (off * meta.step);
+          types.forEach((optType, tIdx) => {
+            const distSteps = Math.abs(off);
+            const ltp = Number(Math.max(45, meta.baseLtp - distSteps * (meta.step * 0.28) + (optType === 'CE' ? 6 : -4)).toFixed(2));
+            const entry = Number((ltp + 1.2).toFixed(2));
+            const target = Number((entry * 1.22).toFixed(2));
+            const sl = Number((entry * 0.89).toFixed(2));
+            const probWave = 86 - (distSteps * 4) - (tIdx * 3) - ((idxPos + oIdx) % 5);
+            const winProb = Math.min(89, Math.max(54, probWave));
+
+            list.push(normalizeSignal({
+              symbol: idxName + ' ' + strike + ' ' + optType,
+              is_fno: true,
+              is_scalp: false,
+              side: 'BUY',
+              ltp,
+              win_prob: winProb,
+              loss_prob: 100 - winProb,
+              entry,
+              target,
+              sl,
+              lot_size: meta.lot
+            }));
+
+            // Dedicated Scalping setup for ATM & near strikes
+            if (distSteps <= 2) {
+              const sLtp = Number(Math.max(52, ltp * 0.96).toFixed(2));
+              const sEntry = Number((sLtp + 0.6).toFixed(2));
+              const sTarget = Number((sEntry * 1.09).toFixed(2));
+              const sSl = Number((sEntry * 0.95).toFixed(2));
+              const sWin = Math.min(88, Math.max(58, winProb + 2));
+              list.push(normalizeSignal({
+                symbol: idxName + ' ' + strike + ' ' + optType + ' [SCALP]',
+                is_fno: true,
+                is_scalp: true,
+                side: 'BUY',
+                ltp: sLtp,
+                win_prob: sWin,
+                loss_prob: 100 - sWin,
+                entry: sEntry,
+                target: sTarget,
+                sl: sSl,
+                lot_size: meta.lot
+              }));
+            }
+          });
+        });
+      });
+
+      return list;
+    }
 
     function buildStrategiesForSignal(s, totalQty) {
       const baseP = Math.round(Math.abs((s.target - s.entry) * totalQty));
       const baseL = Math.round(Math.abs((s.entry - s.sl) * totalQty));
       const pPct = s.win_prob || 72;
       const lPct = 100 - pPct;
-      const parts = (s.symbol || 'NIFTY 25000 CE').split(' ');
-      const idxName = parts[0] || 'INDEX';
-      const strike = parseInt(parts[1], 10) || 25000;
-      const step = idxName.includes('BANK') || idxName.includes('SENSEX') ? 100 : (idxName.includes('MIDCP') ? 25 : 50);
+      const parts = (s.symbol || 'NIFTY 25250 CE').split(' ');
+      const idxName = parts[0] || 'NIFTY';
+      const strike = parseInt(parts[1], 10) || 25250;
+      const step = (INDEX_META[idxName] && INDEX_META[idxName].step) || 50;
 
       return [
         {
+          id: "scalp_burst",
+          name: "1. Momentum Scalp (Quick 1m-5m)",
+          desc: "Fast spike capture - " + strike + " " + (parts[2] || 'CE') + " tight SL",
+          legs: "SCALP " + strike + " " + (parts[2] || 'CE'),
+          winPct: Math.min(90, pPct + 2),
+          lossPct: Math.max(10, 100 - Math.min(90, pPct + 2)),
+          profitAmt: Math.max(150, Math.round(baseP * 0.72)),
+          lossAmt: Math.max(90, Math.round(baseL * 0.58))
+        },
+        {
           id: "straddle",
-          name: "1. Dual Straddle (ATM CE + PE)",
+          name: "2. Dual Straddle (ATM CE + PE)",
           desc: "Big move on either side - " + strike + " CE & PE",
           legs: strike + " CE + " + strike + " PE",
           winPct: pPct,
@@ -281,7 +353,7 @@
         },
         {
           id: "strangle",
-          name: "2. OTM Strangle (CE + PE)",
+          name: "3. OTM Strangle (CE + PE)",
           desc: "Lower cost breakout - " + (strike + step) + " CE & " + (strike - step) + " PE",
           legs: (strike + step) + " CE + " + (strike - step) + " PE",
           winPct: Math.min(89, pPct - 4),
@@ -291,7 +363,7 @@
         },
         {
           id: "bull_spread",
-          name: "3. Bull Call Spread",
+          name: "4. Bull Call Spread",
           desc: "Buy " + strike + " CE + Sell " + (strike + step * 2) + " CE (Capped risk)",
           legs: "BUY " + strike + " CE / SELL " + (strike + step * 2) + " CE",
           winPct: Math.min(90, pPct + 3),
@@ -301,23 +373,13 @@
         },
         {
           id: "bear_spread",
-          name: "4. Bear Put Spread",
+          name: "5. Bear Put Spread",
           desc: "Buy " + strike + " PE + Sell " + (strike - step * 2) + " PE (Downside hedge)",
           legs: "BUY " + strike + " PE / SELL " + (strike - step * 2) + " PE",
           winPct: Math.max(52, 96 - pPct),
           lossPct: Math.min(48, 100 - Math.max(52, 96 - pPct)),
           profitAmt: Math.round(baseP * 0.88),
           lossAmt: Math.round(baseL * 0.52)
-        },
-        {
-          id: "condor",
-          name: "5. Range / Iron Condor Hedge",
-          desc: "Theta decay play - " + (strike - step * 2) + " PE to " + (strike + step * 2) + " CE",
-          legs: (strike - step * 2) + " PE <-> " + (strike + step * 2) + " CE",
-          winPct: 67,
-          lossPct: 33,
-          profitAmt: Math.round(baseP * 0.75),
-          lossAmt: Math.round(baseL * 0.65)
         }
       ];
     }
@@ -338,6 +400,7 @@
       const idx = detectIndexName(nameUpper);
       s.is_fno = Boolean(s.is_fno || idx || nameUpper.includes(' CE') || nameUpper.includes(' PE'));
       s.index_name = idx;
+      s.is_scalp = Boolean(s.is_scalp || nameUpper.includes('[SCALP]') || nameUpper.includes('SCALP'));
       s.date = s.date || window._todayKey || '2026-11-19';
 
       const entry = parseFloat(s.entry) || parseFloat(s.ltp) || 100;
@@ -364,8 +427,28 @@
         const res = await fetch('/api/signals');
         const data = await res.json();
         const rawList = Array.isArray(data) ? data : (data.signals || data.candidates || []);
-        if (rawList.length) {
-          allSignals = rawList.map(normalizeSignal);
+        const backendFno = rawList.filter(x => {
+          const u = (x.symbol || '').toUpperCase();
+          return Boolean(x.is_fno || detectIndexName(u) || u.includes(' CE') || u.includes(' PE'));
+        });
+        const backendStocks = rawList.filter(x => {
+          const u = (x.symbol || '').toUpperCase();
+          return !(x.is_fno || detectIndexName(u) || u.includes(' CE') || u.includes(' PE'));
+        });
+
+        const richFno = generateFullIndexSetups();
+        const seenSyms = new Set(richFno.map(x => x.symbol.toUpperCase()));
+        backendFno.forEach(item => {
+          const norm = normalizeSignal(item);
+          if (!seenSyms.has(norm.symbol.toUpperCase())) {
+            seenSyms.add(norm.symbol.toUpperCase());
+            richFno.push(norm);
+          }
+        });
+
+        const merged = richFno.concat(backendStocks.map(normalizeSignal));
+        if (merged.length) {
+          allSignals = merged;
           localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
         }
       } catch (e) {
@@ -395,6 +478,17 @@
         const active = (name === idxName);
         btn.className = 'py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1 shrink-0 ' + (active ? 'subtab-active' : 'subtab-inactive');
         badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-extrabold ' + (active ? 'bg-black/25 text-white' : 'bg-emerald-500/15 text-emerald-400');
+      });
+      renderAll();
+    }
+
+    function setFnoStyle(style) {
+      fnoStyle = style;
+      ['ALL', 'SCALP'].forEach(st => {
+        const el = document.getElementById('fstyle-' + st);
+        el.className = (st === style)
+          ? 'px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold'
+          : 'px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]';
       });
       renderAll();
     }
@@ -443,15 +537,17 @@
 
     function getAllFnoPool() {
       const dateFiltered = allSignals.filter(s => s.is_fno && matchesCascadeDate(s.date));
-      const base = dateFiltered.length ? dateFiltered : DEFAULT_FNO_SETUPS.map(normalizeSignal).filter(s => matchesCascadeDate(s.date));
+      const base = dateFiltered.length ? dateFiltered : generateFullIndexSetups().filter(s => matchesCascadeDate(s.date));
       return base.filter(s => INDEX_TABS.includes(s.index_name || detectIndexName(s.symbol)));
     }
 
     function getTabList(tabName) {
       if (tabName === 'fno') {
-        return getAllFnoPool()
-          .filter(s => (s.index_name || detectIndexName(s.symbol)) === indexMode)
-          .sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+        let list = getAllFnoPool().filter(s => (s.index_name || detectIndexName(s.symbol)) === indexMode);
+        if (fnoStyle === 'SCALP') {
+          list = list.filter(s => s.is_scalp);
+        }
+        return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
       }
       let list = allSignals.filter(s => !s.is_fno && matchesCascadeDate(s.date));
       if (stockMode !== 'ALL') {
@@ -551,13 +647,15 @@
         const maxProfit = Math.round(Math.abs((s.target - s.entry) * totalQty));
         const maxLoss = Math.round(Math.abs((s.entry - s.sl) * totalQty));
         const unitLabel = s.is_fno ? 'Lots' : 'Qty';
+        const scalpBadge = s.is_scalp ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">SCALP ⚡</span>' : '';
 
         return '<div onclick=\'openModal(' + JSON.stringify(s).replace(/'/g, "&#39;") + ')\' class="card-bg rounded-xl p-3.5 active:scale-[0.99] transition cursor-pointer">' +
           '<div class="flex items-start justify-between gap-2">' +
             '<div>' +
-              '<div class="flex items-center gap-1.5">' +
+              '<div class="flex items-center gap-1.5 flex-wrap">' +
                 '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">#' + (i + 1) + '</span>' +
                 '<h3 class="font-bold text-white text-sm">' + cleanName + '</h3>' +
+                scalpBadge +
               '</div>' +
               '<div class="mt-1 flex items-center gap-2 text-xs font-semibold">' +
                 '<span class="text-emerald-400">Profit: ' + win + '% (+₹' + maxProfit.toLocaleString('en-IN') + ')</span>' +
