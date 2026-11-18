@@ -56,7 +56,7 @@ class VectraHandler(BaseHTTPRequestHandler):
                 "status": "Online",
                 "drive_sync": "Connected (Ready)" if drive_ready else "Check Folders",
                 "feed": "Zerodha Live" if zerodha_live else "Paper/Sample Feed",
-                "folders": folders
+                "drive_folders": folders, "zerodha_connected": zerodha_live
             })
         if path in ("/api/signals", "/signals"):
             raw = get_market_candidates()
