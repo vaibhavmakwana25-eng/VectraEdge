@@ -70,7 +70,6 @@
       </div>
     </div>
 
-    <!-- 3-Row Indices Live Strip: Row1 (2), Row2 (2), Row3 (1) -->
     <div id="index-live-strip" class="max-w-md mx-auto mt-2 space-y-1 text-[10px]"></div>
 
     <div class="relative max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
@@ -238,8 +237,8 @@
       "PIDILITIND","BERGEPAINT","DABUR","MARICO","GODREJCP","COLPAL","VBL","UBL","UNITDSPR","JUBLFOOD"
     ];
 
-    const CACHE_KEY = 'vectra_signals_cache_v11';
-    const HISTORY_KEY = 'vectra_date_snapshots_v7';
+    const CACHE_KEY = 'vectra_signals_cache_v12';
+    const HISTORY_KEY = 'vectra_date_snapshots_v8';
     let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
@@ -613,7 +612,10 @@
       const spotMap = liveSpotsOverride || INDEX_META;
 
       const list = [];
-      const offsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6];
+      const offsets = [];
+      for (let off = -60; off <= 60; off++) {
+        offsets.push(off);
+      }
       const types = ['CE', 'PE'];
 
       INDEX_TABS.forEach((idxName, idxPos) => {
@@ -623,12 +625,13 @@
         const trendBias = ((rawSpot - INDEX_META[idxName].spot) / meta.step) * 1.4;
 
         offsets.forEach((off, oIdx) => {
-          const strike = baseSpot + (off * meta.step);
+          const strike = Math.max(meta.step, baseSpot + (off * meta.step));
           types.forEach((optType, tIdx) => {
             const distSteps = Math.abs(off);
             const trendShift = optType === 'CE' ? trendBias : -trendBias;
-            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4) + trendShift * 2.2).toFixed(2));
-            const probWave = 87 - (distSteps * 3) - (tIdx * 3) + Math.round(trendShift * 1.5) - ((idxPos + oIdx + dayNum) % 4);
+            const rawOptPrice = (meta.baseLtp * 0.65) - (distSteps * (meta.step * 0.045)) + (optType === 'CE' ? 4 : -3) + trendShift * 1.8;
+            const ltp = Number(Math.max(5.0, rawOptPrice).toFixed(2));
+            const probWave = 87 - Math.min(30, Math.round(distSteps * 0.5)) - (tIdx * 3) + Math.round(trendShift * 1.5) - ((idxPos + oIdx + dayNum) % 4);
             const winProb = Math.min(89, Math.max(54, probWave));
             const volRatio = Number((1.05 + ((distSteps === 0 ? 0.45 : 0.15) + ((oIdx + dayNum) % 4) * 0.12)).toFixed(2));
             const btWin = Math.min(88, Math.max(55, winProb - 1));
@@ -648,8 +651,8 @@
               lot_size: meta.lot
             }));
 
-            if (distSteps <= 3) {
-              const sLtp = Number(Math.max(48, ltp * 0.96).toFixed(2));
+            if (distSteps <= 15) {
+              const sLtp = Number(Math.max(8.0, ltp * 0.96).toFixed(2));
               const sWin = Math.min(88, Math.max(58, winProb + 2));
               list.push(normalizeSignal({
                 symbol: idxName + ' ' + strike + ' ' + optType + ' [SCALP]',
@@ -710,7 +713,7 @@
 
     function saveTodaySnapshot(list) {
       const tKey = window._todayKey || '2026-11-19';
-      dateSnapshots[tKey] = list.slice(0, 260);
+      dateSnapshots[tKey] = list.slice(0, 1400);
       try {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(dateSnapshots));
       } catch (e) {}
@@ -880,7 +883,7 @@
         const merged = richFno.concat(richStocks);
         if (merged.length) {
           allSignals = merged;
-          localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals)); } catch (e) {}
           saveTodaySnapshot(allSignals);
           syncLiveTradesWithMarket(merged);
           const sortedAll = merged.filter(x => !x.is_scalp).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
