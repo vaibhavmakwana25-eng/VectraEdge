@@ -70,7 +70,6 @@
       </div>
     </div>
 
-    <!-- 3 Calendar Pop-Grid Triggers + Live All -->
     <div class="relative max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
       <button id="cal-btn-year" onclick="openCalPicker('year')"
         class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 flex items-center justify-between">
@@ -89,7 +88,6 @@
       </button>
       <button onclick="resetDateFilter()" class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-semibold rounded-lg px-2 py-1.5">Live All</button>
 
-      <!-- Calendar Grid Drop-Down Box -->
       <div id="cal-grid-popover" class="hidden absolute left-0 right-0 top-10 z-40 bg-[#131722] border border-[#2a3449] rounded-xl p-3 shadow-2xl">
         <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2536]">
           <span id="cal-grid-title" class="text-xs font-bold text-white">Select Date</span>
@@ -218,8 +216,8 @@
       "TATAMOTORS","M&M","POWERGRID","ULTRACEMCO","ASIANPAINT","BAJAJFINSV","NESTLEIND","WIPRO","HCLTECH","TECHM"
     ];
 
-    const CACHE_KEY = 'vectra_signals_cache_v5';
-    const HISTORY_KEY = 'vectra_date_snapshots_v1';
+    const CACHE_KEY = 'vectra_signals_cache_v6';
+    const HISTORY_KEY = 'vectra_date_snapshots_v2';
     let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
@@ -486,30 +484,56 @@
       renderAll();
     }
 
-    function buildDateSpecificSetups(dateStr) {
+    function extractLiveSpotsFromBackend(backendList) {
+      const spots = Object.assign({}, INDEX_META);
+      backendList.forEach(item => {
+        const u = (item.symbol || '').toUpperCase();
+        const idx = detectIndexName(u);
+        if (idx && spots[idx]) {
+          const candidateSpot = parseFloat(item.spot || item.underlying_ltp || item.index_ltp || 0);
+          if (candidateSpot > 1000) {
+            spots[idx] = Object.assign({}, spots[idx], { spot: candidateSpot });
+          } else {
+            const strikeMatch = u.match(/\b(\d{4,6})\b/);
+            if (strikeMatch) {
+              const stVal = parseFloat(strikeMatch[1]);
+              if (stVal > 1000 && Math.abs(stVal - spots[idx].spot) < spots[idx].spot * 0.25) {
+                spots[idx] = Object.assign({}, spots[idx], { spot: stVal });
+              }
+            }
+          }
+        }
+      });
+      return spots;
+    }
+
+    function buildDateSpecificSetups(dateStr, liveSpotsOverride) {
       const cleanDate = dateStr || window._todayKey || '2026-11-19';
       const dayNum = parseInt(cleanDate.slice(8, 10), 10) || 19;
       const monNum = parseInt(cleanDate.slice(5, 7), 10) || 11;
       const drift = ((dayNum * 7 + monNum * 13) % 9) - 4;
+      const spotMap = liveSpotsOverride || INDEX_META;
 
       const list = [];
       const offsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6];
       const types = ['CE', 'PE'];
 
       INDEX_TABS.forEach((idxName, idxPos) => {
-        const meta = INDEX_META[idxName];
-        const adjSpot = meta.spot + (drift * meta.step);
-        const baseSpot = Math.round(adjSpot / meta.step) * meta.step;
+        const meta = spotMap[idxName] || INDEX_META[idxName];
+        const rawSpot = liveSpotsOverride ? (meta.spot || INDEX_META[idxName].spot) : (meta.spot + (drift * meta.step));
+        const baseSpot = Math.round(rawSpot / meta.step) * meta.step;
+        const trendBias = ((rawSpot - INDEX_META[idxName].spot) / meta.step) * 1.4;
 
         offsets.forEach((off, oIdx) => {
           const strike = baseSpot + (off * meta.step);
           types.forEach((optType, tIdx) => {
             const distSteps = Math.abs(off);
-            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4) + drift * 1.4).toFixed(2));
+            const trendShift = optType === 'CE' ? trendBias : -trendBias;
+            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4) + trendShift * 2.2).toFixed(2));
             const entry = Number((ltp + 1.1).toFixed(2));
             const target = Number((entry * 1.22).toFixed(2));
             const sl = Number((entry * 0.89).toFixed(2));
-            const probWave = 87 - (distSteps * 3) - (tIdx * 3) - ((idxPos + oIdx + dayNum) % 5);
+            const probWave = 87 - (distSteps * 3) - (tIdx * 3) + Math.round(trendShift * 1.5) - ((idxPos + oIdx + dayNum) % 4);
             const winProb = Math.min(89, Math.max(54, probWave));
 
             list.push(normalizeSignal({
@@ -757,7 +781,8 @@
           return !(x.is_fno || detectIndexName(u) || u.includes(' CE') || u.includes(' PE'));
         });
 
-        const richFno = buildDateSpecificSetups(window._todayKey).filter(x => x.is_fno);
+        const liveSpots = extractLiveSpotsFromBackend(backendFno);
+        const richFno = buildDateSpecificSetups(window._todayKey, liveSpots).filter(x => x.is_fno);
         const seenSyms = new Set(richFno.map(x => x.symbol.toUpperCase()));
         backendFno.forEach(item => {
           const norm = normalizeSignal(item);
