@@ -70,7 +70,8 @@
       </div>
     </div>
 
-    <div id="index-live-strip" class="max-w-md mx-auto mt-2 flex gap-1.5 overflow-x-auto text-[10px]"></div>
+    <!-- 3-Row Indices Live Strip: Row1 (2), Row2 (2), Row3 (1) -->
+    <div id="index-live-strip" class="max-w-md mx-auto mt-2 space-y-1 text-[10px]"></div>
 
     <div class="relative max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
       <button id="cal-btn-year" onclick="openCalPicker('year')"
@@ -237,8 +238,8 @@
       "PIDILITIND","BERGEPAINT","DABUR","MARICO","GODREJCP","COLPAL","VBL","UBL","UNITDSPR","JUBLFOOD"
     ];
 
-    const CACHE_KEY = 'vectra_signals_cache_v10';
-    const HISTORY_KEY = 'vectra_date_snapshots_v6';
+    const CACHE_KEY = 'vectra_signals_cache_v11';
+    const HISTORY_KEY = 'vectra_date_snapshots_v7';
     let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
@@ -283,25 +284,38 @@
       return { entry, target, sl, livePnl, maxProfit, maxLoss };
     }
 
+    function makeIndexTileHtml(idxName, spots) {
+      const baseMeta = INDEX_META[idxName];
+      const curMeta = spots[idxName] || baseMeta;
+      const price = Number((curMeta.spot || baseMeta.spot).toFixed(2));
+      const prev = Number((curMeta.prevClose || baseMeta.prevClose || price).toFixed(2));
+      const pts = Number((price - prev).toFixed(2));
+      const pct = prev !== 0 ? Number(((pts / prev) * 100).toFixed(2)) : 0;
+      const isPos = pts >= 0;
+      const sign = isPos ? '+' : '';
+      return '<div class="bg-[#131722] border border-[#1e2536] rounded-lg px-2 py-1 flex items-center justify-between gap-1">' +
+        '<span class="font-bold text-white">' + idxName + '</span>' +
+        '<span class="font-mono text-slate-200">' + price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>' +
+        '<span class="font-mono font-semibold ' + (isPos ? 'text-emerald-400' : 'text-rose-400') + '">' + sign + pts.toFixed(2) + ' (' + sign + pct.toFixed(2) + '%)</span>' +
+      '</div>';
+    }
+
     function renderIndexLiveStrip(liveSpotsOverride) {
       const strip = document.getElementById('index-live-strip');
       if (!strip) return;
       const spots = liveSpotsOverride || INDEX_META;
-      strip.innerHTML = INDEX_TABS.map(idxName => {
-        const baseMeta = INDEX_META[idxName];
-        const curMeta = spots[idxName] || baseMeta;
-        const price = Number((curMeta.spot || baseMeta.spot).toFixed(2));
-        const prev = Number((curMeta.prevClose || baseMeta.prevClose || price).toFixed(2));
-        const pts = Number((price - prev).toFixed(2));
-        const pct = prev !== 0 ? Number(((pts / prev) * 100).toFixed(2)) : 0;
-        const isPos = pts >= 0;
-        const sign = isPos ? '+' : '';
-        return '<div class="shrink-0 bg-[#131722] border border-[#1e2536] rounded-lg px-2 py-1 flex items-center gap-1.5">' +
-          '<span class="font-bold text-white">' + idxName + '</span>' +
-          '<span class="font-mono text-slate-200">' + price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span>' +
-          '<span class="font-mono font-semibold ' + (isPos ? 'text-emerald-400' : 'text-rose-400') + '">' + sign + pts.toFixed(2) + ' (' + sign + pct.toFixed(2) + '%)</span>' +
-        '</div>';
-      }).join('');
+      const row1 = '<div class="grid grid-cols-2 gap-1">' +
+        makeIndexTileHtml('NIFTY', spots) +
+        makeIndexTileHtml('BANKNIFTY', spots) +
+      '</div>';
+      const row2 = '<div class="grid grid-cols-2 gap-1">' +
+        makeIndexTileHtml('SENSEX', spots) +
+        makeIndexTileHtml('FINNIFTY', spots) +
+      '</div>';
+      const row3 = '<div class="grid grid-cols-1">' +
+        makeIndexTileHtml('MIDCPNIFTY', spots) +
+      '</div>';
+      strip.innerHTML = row1 + row2 + row3;
     }
 
     function syncAlertButtons() {
