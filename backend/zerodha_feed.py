@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
@@ -37,6 +38,9 @@ INDICES = [
     ("MIDCPNIFTY", "^NSEMDCP50", 25, 120, 12850.0),
 ]
 
+_CACHE = {"ts": 0.0, "data": []}
+_CACHE_TTL = 60.0
+
 def is_zerodha_configured() -> bool:
     return True
 
@@ -44,7 +48,7 @@ def _fetch_chart(ticker: str) -> Dict:
     enc = urllib.request.quote(ticker, safe="")
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{enc}?interval=1d&range=1mo"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=2.5) as resp:
+    with urllib.request.urlopen(req, timeout=1.5) as resp:
         return json.loads(resp.read().decode("utf-8"))["chart"]["result"][0]
 
 def _calc_rsi(closes: List[float], period: int = 14) -> float:
@@ -98,9 +102,6 @@ def _build_index_setups() -> List[Dict]:
             target = round(entry * 1.24, 2)
             sl = round(entry * 0.88, 2)
 
-            ce_p = win_prob if opt_type == "CE" else max(31, 96 - win_prob)
-            pe_p = win_prob if opt_type == "PE" else max(31, 96 - win_prob)
-
             out.append({
                 "symbol": f"{name} {strike} {opt_type}",
                 "segment": "F&O",
@@ -115,22 +116,7 @@ def _build_index_setups() -> List[Dict]:
                 "min_sl": round(entry * 0.93, 2),
                 "sl": sl,
                 "lot_size": lot,
-                "multi_leg": [
-                    {
-                        "action": "BUY",
-                        "lots": 1,
-                        "type": f"{strike} CE (Profit {ce_p}% | Loss {100 - ce_p}%)",
-                        "max_leg_pnl": round((target - entry) * lot, 0),
-                        "max_leg_loss": round(-(entry - sl) * lot, 0),
-                    },
-                    {
-                        "action": "BUY",
-                        "lots": 1,
-                        "type": f"{strike} PE (Profit {pe_p}% | Loss {100 - pe_p}%)",
-                        "max_leg_pnl": round((target - entry) * 0.85 * lot, 0),
-                        "max_leg_loss": round(-(entry - sl) * lot, 0),
-                    },
-                ],
+                "multi_leg": [],
             })
     return out
 
@@ -214,10 +200,15 @@ def _analyze_stock(symbol: str) -> List[Dict]:
         return [_fallback_stock_setup(symbol)]
 
 def get_market_candidates() -> List[Dict]:
+    now = time.time()
+    if _CACHE["data"] and (now - _CACHE["ts"]) < _CACHE_TTL:
+        return _CACHE["data"]
     idx_setups = _build_index_setups()
-    with ThreadPoolExecutor(max_workers=24) as pool:
+    with ThreadPoolExecutor(max_workers=36) as pool:
         nested = list(pool.map(_analyze_stock, STOCK_UNIVERSE))
     stock_setups = [item for sub in nested for item in sub]
     all_setups = idx_setups + stock_setups
     all_setups.sort(key=lambda x: x.get("win_prob", 0), reverse=True)
+    _CACHE["ts"] = now
+    _CACHE["data"] = all_setups
     return all_setups
