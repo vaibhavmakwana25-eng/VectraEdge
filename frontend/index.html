@@ -55,11 +55,20 @@
       </div>
     </div>
 
-    <!-- Main Segment Tabs -->
-    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-xs border-b border-[#1e2536]">
-      <button id="tab-fno" onclick="switchTab('fno')" class="py-2.5 tab-active">Options (F&O)</button>
-      <button id="tab-stocks" onclick="switchTab('stocks')" class="py-2.5 tab-inactive">Stocks</button>
-      <button id="tab-trades" onclick="switchTab('trades')" class="py-2.5 tab-inactive">My Trades (<span id="trade-count">0</span>)</button>
+    <!-- Main Segment Tabs with Live Counts -->
+    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-[11px] border-b border-[#1e2536]">
+      <button id="tab-fno" onclick="switchTab('fno')" class="py-2 tab-active flex flex-col items-center justify-center gap-0.5">
+        <span>Options (<span id="fno-total">0</span>)</span>
+        <span class="text-[10px] font-semibold"><span id="fno-profit" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="fno-loss" class="text-rose-400">0</span></span>
+      </button>
+      <button id="tab-stocks" onclick="switchTab('stocks')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
+        <span>Stocks (<span id="stk-total">0</span>)</span>
+        <span class="text-[10px] font-semibold"><span id="stk-profit" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="stk-loss" class="text-rose-400">0</span></span>
+      </button>
+      <button id="tab-trades" onclick="switchTab('trades')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
+        <span>Trades (<span id="trd-total">0</span>)</span>
+        <span class="text-[10px] font-semibold"><span id="trd-live" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="trd-closed" class="text-rose-400">0</span></span>
+      </button>
     </nav>
     <div class="max-w-md mx-auto text-[10px] text-slate-500 text-center pt-1">← Slide / Swipe left or right to switch tabs →</div>
   </header>
@@ -110,7 +119,7 @@
     let currentTab = 'fno';
     let stockMode = 'ALL';
     let selectedSignal = null;
-    let myTrades = JSON.parse(localStorage.getItem('vectra_trades') || '[]');
+    let myTrades = JSON.parse(localStorage.getItem('vectra_trades') || '[]').map(t => Object.assign({ status: 'LIVE' }, t));
 
     function updateClock() {
       const now = new Date();
@@ -260,13 +269,14 @@
       if (!TABS.includes(tab)) return;
       currentTab = tab;
       TABS.forEach(t => {
-        document.getElementById('tab-' + t).className = (t === tab) ? 'py-2.5 tab-active' : 'py-2.5 tab-inactive';
+        document.getElementById('tab-' + t).className = (t === tab)
+          ? 'py-2 tab-active flex flex-col items-center justify-center gap-0.5'
+          : 'py-2 tab-inactive flex flex-col items-center justify-center gap-0.5';
       });
       document.getElementById('stock-filters').classList.toggle('hidden', tab !== 'stocks');
       renderAll();
     }
 
-    // Touch swipe / slide gesture on main area
     let touchStartX = 0;
     let touchStartY = 0;
     const swipeEl = document.getElementById('swipe-area');
@@ -309,14 +319,49 @@
       return true;
     }
 
+    function getTabList(tabName) {
+      if (tabName === 'fno') {
+        let list = allSignals.filter(s => s.is_fno && matchesCascadeDate(s.date));
+        return list.length ? list : DEFAULT_FNO_SETUPS.map(normalizeSignal).filter(s => matchesCascadeDate(s.date));
+      }
+      let list = allSignals.filter(s => !s.is_fno && matchesCascadeDate(s.date));
+      if (stockMode !== 'ALL') {
+        list = list.filter(s => (s.symbol || '').includes(stockMode));
+      }
+      return list;
+    }
+
+    function updateHeaderCounts() {
+      const fnoList = getTabList('fno');
+      const stkList = getTabList('stocks');
+
+      const fnoP = fnoList.filter(s => (s.win_prob || 0) >= (s.loss_prob ?? (100 - (s.win_prob || 0)))).length;
+      const fnoL = fnoList.length - fnoP;
+      document.getElementById('fno-total').textContent = fnoList.length;
+      document.getElementById('fno-profit').textContent = fnoP;
+      document.getElementById('fno-loss').textContent = fnoL;
+
+      const stkP = stkList.filter(s => (s.win_prob || 0) >= (s.loss_prob ?? (100 - (s.win_prob || 0)))).length;
+      const stkL = stkList.length - stkP;
+      document.getElementById('stk-total').textContent = stkList.length;
+      document.getElementById('stk-profit').textContent = stkP;
+      document.getElementById('stk-loss').textContent = stkL;
+
+      const liveCnt = myTrades.filter(t => t.status !== 'CLOSED').length;
+      const closedCnt = myTrades.filter(t => t.status === 'CLOSED').length;
+      document.getElementById('trd-total').textContent = myTrades.length;
+      document.getElementById('trd-live').textContent = liveCnt;
+      document.getElementById('trd-closed').textContent = closedCnt;
+    }
+
     function renderAll() {
-      document.getElementById('trade-count').textContent = myTrades.length;
+      updateHeaderCounts();
       const container = document.getElementById('main-list');
       const capital = parseFloat(document.getElementById('capital-input').value) || 100000;
 
       if (currentTab === 'trades') {
         if (!myTrades.length) {
-          container.innerHTML = `<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No active trades logged yet. Tap any signal to accept & track live.</div>`;
+          container.innerHTML = `<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No trades logged yet. Tap any signal to accept & track live.</div>`;
           return;
         }
         const totalPnl = myTrades.reduce((acc, t) => acc + (t.estPnl || 0), 0);
@@ -325,11 +370,16 @@
             <span class="text-xs text-slate-400">EOD Projected Net P&L</span>
             <span class="text-base font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${totalPnl >= 0 ? '+' : ''}₹${totalPnl.toLocaleString('en-IN')}</span>
           </div>
-          ${myTrades.map((t, idx) => `
+          ${myTrades.map((t, idx) => {
+            const isClosed = t.status === 'CLOSED';
+            return `
             <div class="card-bg rounded-xl p-3.5 space-y-1.5">
               <div class="flex justify-between items-center">
-                <span class="font-bold text-white text-sm">${t.cleanName}</span>
-                <button onclick="removeTrade(${idx})" class="text-[11px] text-rose-400">Close</button>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-white text-sm">${t.cleanName}</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isClosed ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">${isClosed ? 'CLOSED' : 'LIVE'}</span>
+                </div>
+                ${!isClosed ? `<button onclick="closeTrade(${idx})" class="text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-semibold">Close Trade</button>` : ''}
               </div>
               <div class="text-xs text-slate-300 flex justify-between">
                 <span>Entry: ₹${t.entry}</span>
@@ -337,18 +387,12 @@
                 <span class="text-rose-400">SL: ₹${t.sl}</span>
               </div>
             </div>
-          `).join('')}
+          `}).join('')}
         `;
         return;
       }
 
-      let filtered = allSignals.filter(s => (currentTab === 'fno' ? s.is_fno : !s.is_fno) && matchesCascadeDate(s.date));
-      if (currentTab === 'fno' && filtered.length === 0) {
-        filtered = DEFAULT_FNO_SETUPS.map(normalizeSignal).filter(s => matchesCascadeDate(s.date));
-      }
-      if (currentTab === 'stocks' && stockMode !== 'ALL') {
-        filtered = filtered.filter(s => (s.symbol || '').includes(stockMode));
-      }
+      let filtered = getTabList(currentTab).slice();
       filtered.sort((a, b) => (b.win_prob || 60) - (a.win_prob || 60));
 
       if (!filtered.length) {
@@ -460,15 +504,18 @@
         entry: selectedSignal.entry,
         target: selectedSignal.target,
         sl: selectedSignal.sl,
-        estPnl
+        estPnl,
+        status: 'LIVE'
       });
       localStorage.setItem('vectra_trades', JSON.stringify(myTrades));
       closeModal();
       switchTab('trades');
     }
 
-    function removeTrade(idx) {
-      myTrades.splice(idx, 1);
+    function closeTrade(idx) {
+      if (myTrades[idx]) {
+        myTrades[idx].status = 'CLOSED';
+      }
       localStorage.setItem('vectra_trades', JSON.stringify(myTrades));
       renderAll();
     }
