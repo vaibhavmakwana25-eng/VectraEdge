@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -27,7 +27,6 @@
       </div>
     </div>
 
-    <!-- Date / Month / Year Cascade -->
     <div class="max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
       <select id="filter-year" onchange="onCascadeChange('year')" class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 focus:outline-none">
         <option value="ALL">All Yrs</option>
@@ -41,21 +40,6 @@
       <button onclick="resetDateFilter()" class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-semibold rounded-lg px-2 py-1.5">Live All</button>
     </div>
 
-    <!-- Capital & Risk Input -->
-    <div class="max-w-md mx-auto mt-2.5 grid grid-cols-2 gap-2">
-      <div class="bg-[#131722] border border-[#1e2536] rounded-lg px-3 py-1.5">
-        <label class="block text-[10px] text-slate-400 uppercase tracking-wider">Capital (₹)</label>
-        <input id="capital-input" type="number" value="100000" min="1000" step="1000"
-          class="w-full bg-transparent text-white font-semibold text-sm focus:outline-none" onchange="renderAll()" />
-      </div>
-      <div class="bg-[#131722] border border-[#1e2536] rounded-lg px-3 py-1.5">
-        <label class="block text-[10px] text-slate-400 uppercase tracking-wider">Risk / Trade (%)</label>
-        <input id="risk-input" type="number" value="2" min="0.5" max="25" step="0.5"
-          class="w-full bg-transparent text-white font-semibold text-sm focus:outline-none" onchange="renderAll()" />
-      </div>
-    </div>
-
-    <!-- Main Segment Tabs with Live Counts -->
     <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-[11px] border-b border-[#1e2536]">
       <button id="tab-fno" onclick="switchTab('fno')" class="py-2 tab-active flex flex-col items-center justify-center gap-0.5">
         <span>Options (<span id="fno-total">0</span>)</span>
@@ -70,7 +54,6 @@
         <span class="text-[10px] font-semibold"><span id="trd-live" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="trd-closed" class="text-rose-400">0</span></span>
       </button>
     </nav>
-    <div class="max-w-md mx-auto text-[10px] text-slate-500 text-center pt-1">← Slide / Swipe left or right to switch tabs →</div>
   </header>
 
   <div id="stock-filters" class="hidden max-w-md mx-auto px-4 pt-3 flex gap-2">
@@ -81,7 +64,7 @@
 
   <main id="swipe-area" class="max-w-md mx-auto px-4 pt-3 space-y-3 min-h-[65vh]">
     <div id="main-list" class="space-y-3">
-      <div class="text-center py-12 text-slate-400 text-sm">Scanning live NSE & F&O setups...</div>
+      <div class="text-center py-12 text-slate-400 text-sm">Loading fast market setups...</div>
     </div>
   </main>
 
@@ -92,37 +75,47 @@
           <h2 id="modal-title" class="text-base font-bold text-white">NIFTY 24650 CE</h2>
           <p id="modal-sub" class="text-xs text-emerald-400">Profit Chance: 82% | Loss Chance: 18%</p>
         </div>
-        <button onclick="closeModal()" class="px-2.5 py-1 rounded-lg bg-[#1e2536] text-slate-300 text-xs">Close ✕</button>
+        <button onclick="closeModal()" class="px-2.5 py-1 rounded-lg bg-[#1e2536] text-slate-300 text-xs">Close</button>
       </div>
 
       <div class="mt-3 bg-[#0b0e14] rounded-xl p-3 border border-[#1e2536]">
         <div class="flex justify-between text-[10px] text-slate-400 mb-2">
-          <span>EMA 20/50 • VWAP • RSI (14) • BB</span>
+          <span>EMA 20/50 - VWAP - RSI (14) - BB</span>
           <span class="text-emerald-400">15m Live View</span>
         </div>
-        <canvas id="signal-chart" height="120" class="w-full"></canvas>
+        <canvas id="signal-chart" height="110" class="w-full"></canvas>
       </div>
 
       <div id="modal-pnl" class="mt-3 grid grid-cols-2 gap-2 text-xs"></div>
 
+      <div id="selected-strategy-box" class="hidden mt-3 bg-[#0b0e14] border border-emerald-500/40 rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Selected Strategy View</span>
+          <button onclick="clearSelectedStrategy()" class="text-[11px] text-slate-400">All 5</button>
+        </div>
+        <div id="selected-strategy-content" class="text-xs space-y-1.5"></div>
+      </div>
+
       <div class="mt-3">
-        <div class="text-xs font-bold text-white mb-2">5 Ready Option Strategies (With % & ₹ P&L)</div>
+        <div class="text-xs font-bold text-white mb-2">5 Option Strategies (Tap any strategy for separate view)</div>
         <div id="modal-legs" class="space-y-2"></div>
       </div>
 
       <button id="accept-btn" onclick="acceptCurrentSignal()"
         class="mt-4 w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition">
-        Accept & Log to My Trades
+        Accept and Log to My Trades
       </button>
     </div>
   </div>
 
   <script>
     const TABS = ['fno', 'stocks', 'trades'];
-    let allSignals = [];
+    const CACHE_KEY = 'vectra_signals_cache_v1';
+    let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
     let stockMode = 'ALL';
     let selectedSignal = null;
+    let activeStrategy = null;
     let myTrades = JSON.parse(localStorage.getItem('vectra_trades') || '[]').map(t => Object.assign({ status: 'LIVE' }, t));
 
     function updateClock() {
@@ -144,24 +137,24 @@
       const curD = String(now.getDate()).padStart(2, '0');
 
       const ySel = document.getElementById('filter-year');
-      ySel.innerHTML = `<option value="ALL">All Yrs</option>` + [curY, curY - 1].map(y => `<option value="${y}">${y}</option>`).join('');
+      ySel.innerHTML = '<option value="ALL">All Yrs</option>' + [curY, curY - 1].map(y => '<option value="' + y + '">' + y + '</option>').join('');
 
       const mSel = document.getElementById('filter-month');
       const months = ['01-Jan','02-Feb','03-Mar','04-Apr','05-May','06-Jun','07-Jul','08-Aug','09-Sep','10-Oct','11-Nov','12-Dec'];
-      mSel.innerHTML = `<option value="ALL">All Mos</option>` + months.map(m => `<option value="${m.slice(0,2)}">${m}</option>`).join('');
+      mSel.innerHTML = '<option value="ALL">All Mos</option>' + months.map(m => '<option value="' + m.slice(0,2) + '">' + m + '</option>').join('');
 
       const dSel = document.getElementById('filter-day');
-      let dOpts = `<option value="ALL">All Days</option>`;
+      let dOpts = '<option value="ALL">All Days</option>';
       for (let d = 1; d <= 31; d++) {
         const dd = String(d).padStart(2, '0');
-        dOpts += `<option value="${dd}">${dd}</option>`;
+        dOpts += '<option value="' + dd + '">' + dd + '</option>';
       }
       dSel.innerHTML = dOpts;
 
       ySel.value = 'ALL';
       mSel.value = 'ALL';
       dSel.value = 'ALL';
-      window._todayKey = `${curY}-${curM}-${curD}`;
+      window._todayKey = curY + '-' + curM + '-' + curD;
     }
 
     function onCascadeChange(level) {
@@ -199,40 +192,50 @@
 
       return [
         {
+          id: "straddle",
           name: "1. Dual Straddle (ATM CE + PE)",
-          desc: `Big move on either side • ${strike} CE & PE`,
+          desc: "Big move on either side - " + strike + " CE & PE",
+          legs: strike + " CE + " + strike + " PE",
           winPct: pPct,
           lossPct: lPct,
           profitAmt: Math.round(baseP * 1.35),
           lossAmt: Math.round(baseL * 1.15)
         },
         {
+          id: "strangle",
           name: "2. OTM Strangle (CE + PE)",
-          desc: `Lower cost breakout • ${strike + step} CE & ${strike - step} PE`,
+          desc: "Lower cost breakout - " + (strike + step) + " CE & " + (strike - step) + " PE",
+          legs: (strike + step) + " CE + " + (strike - step) + " PE",
           winPct: Math.min(89, pPct - 4),
           lossPct: Math.max(11, 100 - Math.min(89, pPct - 4)),
           profitAmt: Math.round(baseP * 1.15),
           lossAmt: Math.round(baseL * 0.85)
         },
         {
+          id: "bull_spread",
           name: "3. Bull Call Spread",
-          desc: `Buy ${strike} CE + Sell ${strike + step * 2} CE (Capped risk)`,
+          desc: "Buy " + strike + " CE + Sell " + (strike + step * 2) + " CE (Capped risk)",
+          legs: "BUY " + strike + " CE / SELL " + (strike + step * 2) + " CE",
           winPct: Math.min(90, pPct + 3),
           lossPct: Math.max(10, 100 - Math.min(90, pPct + 3)),
           profitAmt: Math.round(baseP * 0.90),
           lossAmt: Math.round(baseL * 0.55)
         },
         {
+          id: "bear_spread",
           name: "4. Bear Put Spread",
-          desc: `Buy ${strike} PE + Sell ${strike - step * 2} PE (Downside hedge)`,
+          desc: "Buy " + strike + " PE + Sell " + (strike - step * 2) + " PE (Downside hedge)",
+          legs: "BUY " + strike + " PE / SELL " + (strike - step * 2) + " PE",
           winPct: Math.max(52, 96 - pPct),
           lossPct: Math.min(48, 100 - Math.max(52, 96 - pPct)),
           profitAmt: Math.round(baseP * 0.88),
           lossAmt: Math.round(baseL * 0.52)
         },
         {
+          id: "condor",
           name: "5. Range / Iron Condor Hedge",
-          desc: `Theta decay play • ${strike - step * 2} PE to ${strike + step * 2} CE`,
+          desc: "Theta decay play - " + (strike - step * 2) + " PE to " + (strike + step * 2) + " CE",
+          legs: (strike - step * 2) + " PE <-> " + (strike + step * 2) + " CE",
           winPct: 67,
           lossPct: 33,
           profitAmt: Math.round(baseP * 0.75),
@@ -271,7 +274,10 @@
         const res = await fetch('/api/signals');
         const data = await res.json();
         const rawList = Array.isArray(data) ? data : (data.signals || data.candidates || []);
-        allSignals = rawList.map(normalizeSignal);
+        if (rawList.length) {
+          allSignals = rawList.map(normalizeSignal);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -370,38 +376,35 @@
     function renderAll() {
       updateHeaderCounts();
       const container = document.getElementById('main-list');
-      const capital = parseFloat(document.getElementById('capital-input').value) || 100000;
 
       if (currentTab === 'trades') {
         if (!myTrades.length) {
-          container.innerHTML = `<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No trades logged yet. Tap any signal to accept & track live.</div>`;
+          container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No trades logged yet. Tap any signal to accept and track live.</div>';
           return;
         }
         const totalPnl = myTrades.reduce((acc, t) => acc + (t.estPnl || 0), 0);
-        container.innerHTML = `
-          <div class="card-bg rounded-xl p-3 flex justify-between items-center">
-            <span class="text-xs text-slate-400">EOD Projected Net P&L</span>
-            <span class="text-base font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${totalPnl >= 0 ? '+' : ''}₹${totalPnl.toLocaleString('en-IN')}</span>
-          </div>
-          ${myTrades.map((t, idx) => {
+        container.innerHTML =
+          '<div class="card-bg rounded-xl p-3 flex justify-between items-center">' +
+            '<span class="text-xs text-slate-400">EOD Projected Net P&L</span>' +
+            '<span class="text-base font-bold ' + (totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (totalPnl >= 0 ? '+' : '') + '₹' + totalPnl.toLocaleString('en-IN') + '</span>' +
+          '</div>' +
+          myTrades.map((t, idx) => {
             const isClosed = t.status === 'CLOSED';
-            return `
-            <div class="card-bg rounded-xl p-3.5 space-y-1.5">
-              <div class="flex justify-between items-center">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-white text-sm">${t.cleanName}</span>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isClosed ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">${isClosed ? 'CLOSED' : 'LIVE'}</span>
-                </div>
-                ${!isClosed ? `<button onclick="closeTrade(${idx})" class="text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-semibold">Close Trade</button>` : ''}
-              </div>
-              <div class="text-xs text-slate-300 flex justify-between">
-                <span>Entry: ₹${t.entry}</span>
-                <span class="text-emerald-400">Target: ₹${t.target}</span>
-                <span class="text-rose-400">SL: ₹${t.sl}</span>
-              </div>
-            </div>
-          `}).join('')}
-        `;
+            return '<div class="card-bg rounded-xl p-3.5 space-y-1.5">' +
+              '<div class="flex justify-between items-center">' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="font-bold text-white text-sm">' + t.cleanName + '</span>' +
+                  '<span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (isClosed ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400') + '">' + (isClosed ? 'CLOSED' : 'LIVE') + '</span>' +
+                '</div>' +
+                (!isClosed ? '<button onclick="closeTrade(' + idx + ')" class="text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-semibold">Close Trade</button>' : '') +
+              '</div>' +
+              '<div class="text-xs text-slate-300 flex justify-between">' +
+                '<span>Entry: ₹' + t.entry + '</span>' +
+                '<span class="text-emerald-400">Target: ₹' + t.target + '</span>' +
+                '<span class="text-rose-400">SL: ₹' + t.sl + '</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
         return;
       }
 
@@ -409,7 +412,7 @@
       filtered.sort((a, b) => (b.win_prob || 60) - (a.win_prob || 60));
 
       if (!filtered.length) {
-        container.innerHTML = `<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No setups match this date/filter right now. Tap "Live All" to view all.</div>`;
+        container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No setups match this date/filter right now. Tap "Live All" to view all.</div>';
         return;
       }
 
@@ -417,109 +420,109 @@
         const win = s.win_prob || 68;
         const loss = s.loss_prob || (100 - win);
         const cleanName = (s.symbol || '').split('(')[0].trim();
-        const lot = s.lot_size || Math.max(1, Math.floor((capital * 0.25) / (s.ltp || 100)));
+        const lot = s.lot_size || 1;
         const maxProfit = Math.round(Math.abs((s.target - s.entry) * lot));
         const maxLoss = Math.round(Math.abs((s.entry - s.sl) * lot));
 
-        let stratPreview = '';
-        if (s.is_fno) {
-          const top3 = buildStrategiesForSignal(s, lot).slice(0, 3);
-          stratPreview = `
-            <div class="mt-2.5 pt-2 border-t border-[#1e2536] space-y-1 text-[11px]">
-              <div class="text-slate-400 font-medium flex justify-between">
-                <span>5 Strategies Available (Tap card for all 5):</span>
-                <span class="text-emerald-400">Profit % + ₹ | Loss % + ₹</span>
-              </div>
-              ${top3.map(st => `
-                <div class="flex justify-between items-center text-slate-200">
-                  <span class="truncate pr-2">• ${st.name}</span>
-                  <span class="whitespace-nowrap font-semibold">
-                    <span class="text-emerald-400">${st.winPct}% (+₹${st.profitAmt.toLocaleString('en-IN')})</span>
-                    <span class="text-slate-600"> | </span>
-                    <span class="text-rose-400">${st.lossPct}% (-₹${st.lossAmt.toLocaleString('en-IN')})</span>
-                  </span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        }
-
-        return `
-          <div onclick='openModal(${JSON.stringify(s).replace(/'/g, "&#39;")})' class="card-bg rounded-xl p-3.5 active:scale-[0.99] transition cursor-pointer">
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">#${i + 1}</span>
-                  <h3 class="font-bold text-white text-sm">${cleanName}</h3>
-                </div>
-                <div class="mt-1 flex items-center gap-2 text-xs font-semibold">
-                  <span class="text-emerald-400">Profit: ${win}% (+₹${maxProfit.toLocaleString('en-IN')})</span>
-                  <span class="text-slate-600">|</span>
-                  <span class="text-rose-400">Loss: ${loss}% (-₹${maxLoss.toLocaleString('en-IN')})</span>
-                </div>
-              </div>
-              <div class="text-right">
-                <span class="px-2 py-0.5 rounded text-[11px] font-bold ${s.side === 'SELL' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">${s.side}</span>
-                <div class="text-xs text-slate-300 mt-1">LTP ₹${s.ltp}</div>
-              </div>
-            </div>
-
-            <div class="mt-3 grid grid-cols-3 gap-2 bg-[#0b0e14] rounded-lg p-2 text-center text-xs">
-              <div><div class="text-[10px] text-slate-400">Entry</div><div class="font-semibold text-white">₹${s.entry}</div></div>
-              <div><div class="text-[10px] text-slate-400">Target</div><div class="font-semibold text-emerald-400">₹${s.target}</div></div>
-              <div><div class="text-[10px] text-slate-400">Stop Loss</div><div class="font-semibold text-rose-400">₹${s.sl}</div></div>
-            </div>
-
-            <div class="mt-2 flex justify-between text-[11px] text-slate-300">
-              <span>${s.is_fno ? '1 Lot (' + lot + ')' : 'Qty (' + lot + ')'} Max Profit: <strong class="text-emerald-400">+₹${maxProfit.toLocaleString('en-IN')}</strong></span>
-              <span>Max Loss: <strong class="text-rose-400">-₹${maxLoss.toLocaleString('en-IN')}</strong></span>
-            </div>
-            ${stratPreview}
-          </div>
-        `;
+        return '<div onclick=\'openModal(' + JSON.stringify(s).replace(/'/g, "&#39;") + ')\' class="card-bg rounded-xl p-3.5 active:scale-[0.99] transition cursor-pointer">' +
+          '<div class="flex items-start justify-between gap-2">' +
+            '<div>' +
+              '<div class="flex items-center gap-1.5">' +
+                '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">#' + (i + 1) + '</span>' +
+                '<h3 class="font-bold text-white text-sm">' + cleanName + '</h3>' +
+              '</div>' +
+              '<div class="mt-1 flex items-center gap-2 text-xs font-semibold">' +
+                '<span class="text-emerald-400">Profit: ' + win + '% (+₹' + maxProfit.toLocaleString('en-IN') + ')</span>' +
+                '<span class="text-slate-600">|</span>' +
+                '<span class="text-rose-400">Loss: ' + loss + '% (-₹' + maxLoss.toLocaleString('en-IN') + ')</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="text-right">' +
+              '<span class="px-2 py-0.5 rounded text-[11px] font-bold ' + (s.side === 'SELL' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400') + '">' + s.side + '</span>' +
+              '<div class="text-xs text-slate-300 mt-1">LTP ₹' + s.ltp + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mt-3 grid grid-cols-3 gap-2 bg-[#0b0e14] rounded-lg p-2 text-center text-xs">' +
+            '<div><div class="text-[10px] text-slate-400">Entry</div><div class="font-semibold text-white">₹' + s.entry + '</div></div>' +
+            '<div><div class="text-[10px] text-slate-400">Target</div><div class="font-semibold text-emerald-400">₹' + s.target + '</div></div>' +
+            '<div><div class="text-[10px] text-slate-400">Stop Loss</div><div class="font-semibold text-rose-400">₹' + s.sl + '</div></div>' +
+          '</div>' +
+          '<div class="mt-2 flex justify-between text-[11px] text-slate-300">' +
+            '<span>' + (s.is_fno ? '1 Lot (' + lot + ')' : 'Qty (' + lot + ')') + ' Max Profit: <strong class="text-emerald-400">+₹' + maxProfit.toLocaleString('en-IN') + '</strong></span>' +
+            '<span>Max Loss: <strong class="text-rose-400">-₹' + maxLoss.toLocaleString('en-IN') + '</strong></span>' +
+          '</div>' +
+        '</div>';
       }).join('');
     }
 
     function openModal(s) {
       selectedSignal = s;
+      activeStrategy = null;
+      document.getElementById('selected-strategy-box').classList.add('hidden');
+
       const win = s.win_prob || 68;
       const loss = s.loss_prob || (100 - win);
-      const capital = parseFloat(document.getElementById('capital-input').value) || 100000;
-      const lot = s.lot_size || Math.max(1, Math.floor((capital * 0.25) / (s.ltp || 100)));
+      const lot = s.lot_size || 1;
       const maxP = Math.round(Math.abs((s.target - s.entry) * lot));
       const maxL = Math.round(Math.abs((s.entry - s.sl) * lot));
 
       document.getElementById('modal-title').textContent = (s.symbol || '').split('(')[0].trim();
-      document.getElementById('modal-sub').textContent = `Profit ${win}% (+₹${maxP.toLocaleString('en-IN')}) | Loss ${loss}% (-₹${maxL.toLocaleString('en-IN')}) • LTP ₹${s.ltp}`;
+      document.getElementById('modal-sub').textContent = 'Profit ' + win + '% (+₹' + maxP.toLocaleString('en-IN') + ') | Loss ' + loss + '% (-₹' + maxL.toLocaleString('en-IN') + ') - LTP ₹' + s.ltp;
 
-      document.getElementById('modal-pnl').innerHTML = `
-        <div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">
-          <div class="text-[10px] text-slate-400">Max Profit (${win}%)</div>
-          <div class="text-sm font-bold text-emerald-400">+₹${maxP.toLocaleString('en-IN')}</div>
-        </div>
-        <div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">
-          <div class="text-[10px] text-slate-400">Max Loss (${loss}%)</div>
-          <div class="text-sm font-bold text-rose-400">-₹${maxL.toLocaleString('en-IN')}</div>
-        </div>
-      `;
+      document.getElementById('modal-pnl').innerHTML =
+        '<div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">' +
+          '<div class="text-[10px] text-slate-400">Max Profit (' + win + '%)</div>' +
+          '<div class="text-sm font-bold text-emerald-400">+₹' + maxP.toLocaleString('en-IN') + '</div>' +
+        '</div>' +
+        '<div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">' +
+          '<div class="text-[10px] text-slate-400">Max Loss (' + loss + '%)</div>' +
+          '<div class="text-sm font-bold text-rose-400">-₹' + maxL.toLocaleString('en-IN') + '</div>' +
+        '</div>';
 
       const strats = buildStrategiesForSignal(s, lot);
-      document.getElementById('modal-legs').innerHTML = strats.map(st => `
-        <div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536] space-y-1 text-xs">
-          <div class="flex justify-between items-center">
-            <span class="font-bold text-white">${st.name}</span>
-            <span class="text-[11px] font-semibold">
-              <span class="text-emerald-400">${st.winPct}% (+₹${st.profitAmt.toLocaleString('en-IN')})</span>
-              <span class="text-slate-600"> | </span>
-              <span class="text-rose-400">${st.lossPct}% (-₹${st.lossAmt.toLocaleString('en-IN')})</span>
-            </span>
-          </div>
-          <div class="text-[11px] text-slate-400">${st.desc}</div>
-        </div>
-      `).join('');
+      window._currentStrats = strats;
+      document.getElementById('modal-legs').innerHTML = strats.map((st, idx) =>
+        '<div onclick="selectStrategy(' + idx + ')" class="bg-[#0b0e14] hover:border-emerald-500/50 p-2.5 rounded-lg border border-[#1e2536] space-y-1 text-xs cursor-pointer transition">' +
+          '<div class="flex justify-between items-center">' +
+            '<span class="font-bold text-white">' + st.name + '</span>' +
+            '<span class="text-[11px] font-semibold">' +
+              '<span class="text-emerald-400">' + st.winPct + '% (+₹' + st.profitAmt.toLocaleString('en-IN') + ')</span>' +
+              '<span class="text-slate-600"> | </span>' +
+              '<span class="text-rose-400">' + st.lossPct + '% (-₹' + st.lossAmt.toLocaleString('en-IN') + ')</span>' +
+            '</span>' +
+          '</div>' +
+          '<div class="text-[11px] text-slate-400">' + st.desc + '</div>' +
+        '</div>'
+      ).join('');
 
       document.getElementById('detail-modal').classList.remove('hidden');
       drawChart(s.ltp || 100);
+    }
+
+    function selectStrategy(idx) {
+      const st = (window._currentStrats || [])[idx];
+      if (!st || !selectedSignal) return;
+      activeStrategy = st;
+      document.getElementById('selected-strategy-box').classList.remove('hidden');
+      document.getElementById('selected-strategy-content').innerHTML =
+        '<div class="font-bold text-white text-sm">' + st.name + '</div>' +
+        '<div class="text-slate-300">Legs: <strong class="text-white">' + st.legs + '</strong></div>' +
+        '<div class="text-slate-400">' + st.desc + '</div>' +
+        '<div class="grid grid-cols-2 gap-2 pt-1">' +
+          '<div class="bg-[#131722] p-2 rounded-lg">' +
+            '<div class="text-[10px] text-slate-400">Profit (' + st.winPct + '%)</div>' +
+            '<div class="font-bold text-emerald-400">+₹' + st.profitAmt.toLocaleString('en-IN') + '</div>' +
+          '</div>' +
+          '<div class="bg-[#131722] p-2 rounded-lg">' +
+            '<div class="text-[10px] text-slate-400">Loss (' + st.lossPct + '%)</div>' +
+            '<div class="font-bold text-rose-400">-₹' + st.lossAmt.toLocaleString('en-IN') + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function clearSelectedStrategy() {
+      activeStrategy = null;
+      document.getElementById('selected-strategy-box').classList.add('hidden');
     }
 
     function closeModal() {
@@ -528,11 +531,12 @@
 
     function acceptCurrentSignal() {
       if (!selectedSignal) return;
-      const capital = parseFloat(document.getElementById('capital-input').value) || 100000;
-      const lot = selectedSignal.lot_size || Math.max(1, Math.floor((capital * 0.25) / (selectedSignal.ltp || 100)));
-      const estPnl = Math.round(Math.abs((selectedSignal.target - selectedSignal.entry) * lot));
+      const lot = selectedSignal.lot_size || 1;
+      const baseName = (selectedSignal.symbol || '').split('(')[0].trim();
+      const label = activeStrategy ? (baseName + ' - ' + activeStrategy.name) : baseName;
+      const estPnl = activeStrategy ? activeStrategy.profitAmt : Math.round(Math.abs((selectedSignal.target - selectedSignal.entry) * lot));
       myTrades.unshift({
-        cleanName: (selectedSignal.symbol || '').split('(')[0].trim(),
+        cleanName: label,
         entry: selectedSignal.entry,
         target: selectedSignal.target,
         sl: selectedSignal.sl,
@@ -573,8 +577,9 @@
     }
 
     initCascade();
+    renderAll();
     fetchSignals();
-    setInterval(fetchSignals, 15000);
+    setInterval(fetchSignals, 30000);
   </script>
 </body>
 </html>
