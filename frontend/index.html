@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VectraEdge — Signal Terminal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0d1117; color: #e6edf3; padding-bottom: 72px; }
+    header { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 16px; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+    .brand { font-size: 18px; font-weight: 700; color: #58a6ff; }
+    .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: #1f2937; color: #3fb950; border: 1px solid #238636; }
+    .status-bar { background: #11161d; padding: 8px 16px; font-size: 12px; color: #8b949e; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 14px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #30363d; background: #161b22; color: #8b949e; font-weight: 600; cursor: pointer; }
+    .tab-btn.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .sym { font-size: 16px; font-weight: 700; }
+    .seg { font-size: 11px; color: #8b949e; margin-top: 2px; }
+    .ltp-box { text-align: right; }
+    .ltp { font-size: 16px; font-weight: 700; }
+    .pct { font-size: 12px; color: #3fb950; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: #0d1117; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; }
+    .lbl { font-size: 11px; color: #8b949e; }
+    .val { font-size: 14px; font-weight: 600; margin-top: 2px; }
+    .green { color: #3fb950; }
+    .red { color: #f85149; }
+    .pnl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; background: #0d1117; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+    .leg-box { font-size: 12px; background: #1c2128; border-left: 3px solid #58a6ff; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .conf { font-size: 12px; color: #8b949e; }
+    .accept-btn { background: #238636; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .accept-btn:disabled { background: #30363d; color: #8b949e; cursor: default; }
+    .empty { text-align: center; color: #8b949e; padding: 32px 12px; font-size: 14px; }
+  </style>
+<link rel="manifest" href="/manifest.json"><script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js");}</script></head>
+<body>
+  <header>
+    <div class="brand">VectraEdge</div>
+    <span class="badge" id="modeBadge">SIGNAL ONLY</span>
+  </header>
+  <div class="status-bar">
+    <span id="driveStatus">Drive Sync: Checking...</span>
+    <span id="zerodhaStatus">Feed: Checking...</span>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabSignals" onclick="switchTab('signals')">Live Signals</button>
+      <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Saved Trades (Drive)</button>
+    </div>
+
+    <div id="signalsView"></div>
+    <div id="tradesView" style="display:none;"></div>
+  </div>
+
+  <script>
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('modeBadge').textContent = data.mode;
+        const ok = data.drive_folders && Object.values(data.drive_folders).every(Boolean);
+        document.getElementById('driveStatus').textContent = ok ? 'Drive Sync: Connected' : 'Drive Sync: Check Folders';
+        document.getElementById('zerodhaStatus').textContent = data.zerodha_connected ? 'Zerodha: Live' : 'Zerodha: Paper/Sample Feed';
+      } catch (e) {
+        document.getElementById('driveStatus').textContent = 'Backend Offline';
+      }
+    }
+
+    async function loadSignals() {
+      const box = document.getElementById('signalsView');
+      box.innerHTML = '<div class="empty">Scanning 5 sub-agents...</div>';
+      try {
+        const res = await fetch('/api/signals');
+        const data = await res.json();
+        if (!data.signals || data.signals.length === 0) {
+          box.innerHTML = '<div class="empty">No high-confidence signals right now.</div>';
+          return;
+        }
+        box.innerHTML = data.signals.map((s, idx) => `
+          <div class="card">
+            <div class="card-top">
+              <div>
+                <div class="sym">${s.symbol}</div>
+                <div class="seg">${s.segment} • 1 Lot = ${s.lot_pnl.lot_size} Qty</div>
+              </div>
+              <div class="ltp-box">
+                <div class="ltp">₹${s.ltp.toFixed(2)}</div>
+                <div class="pct">+${s.profit_pct}% Est.</div>
+              </div>
+            </div>
+            <div class="grid">
+              <div><div class="lbl">ENTRY</div><div class="val">₹${s.entry}</div></div>
+              <div><div class="lbl">STOP LOSS</div><div class="val red">₹${s.sl}</div></div>
+              <div><div class="lbl">TARGET</div><div class="val green">₹${s.target}</div></div>
+            </div>
+            <div class="pnl-grid">
+              <div>Max Profit (1 Lot): <strong class="green">+₹${s.lot_pnl.max_profit}</strong></div>
+              <div>Min Profit (1 Lot): <strong class="green">+₹${s.lot_pnl.min_profit}</strong></div>
+              <div>Max Loss (1 Lot): <strong class="red">₹${s.lot_pnl.max_loss}</strong></div>
+              <div>Est. Charges: <strong>₹${s.lot_pnl.charges_est}</strong></div>
+            </div>
+            ${s.multi_leg ? `<div class="leg-box"><strong>Multi-Leg:</strong> ${s.multi_leg.summary} (Net Max: +₹${s.multi_leg.max_profit} / Max Loss: ₹${s.multi_leg.max_loss})</div>` : ''}
+            <div class="card-footer">
+              <span class="conf">Confidence: <strong>${Math.round(s.confidence_score * 100)}%</strong></span>
+              <button class="accept-btn" id="btn-${idx}" onclick='acceptTrade(${idx}, ${JSON.stringify(s)})'>Log Manual Trade</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        box.innerHTML = '<div class="empty">Failed to load signals.</div>';
+      }
+    }
+
+    async function acceptTrade(idx, signal) {
+      const btn = document.getElementById('btn-' + idx);
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        await fetch('/api/trades/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(signal)
+        });
+        btn.textContent = 'Saved to Drive ✓';
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Retry Save';
+      }
+    }
+
+    async function loadTrades() {
+      const box = document.getElementById('tradesView');
+      box.innerHTML = '<div class="empty">Loading saved trades...</div>';
+      try {
+        const res = await fetch('/api/trades');
+        const data = await res.json();
+        if (!data.trades || data.trades.length === 0) {
+          box.innerHTML = '<div class="empty">No manual trades logged today.</div>';
+          return;
+        }
+        box.innerHTML = data.trades.slice().reverse().map(t => `
+          <div class="card">
+            <div class="card-top">
+              <div><div class="sym">${t.symbol}</div><div class="seg">${t.segment} • Logged: ${t.saved_at || ''}</div></div>
+              <div class="ltp-box"><div class="ltp">Entry ₹${t.entry}</div><div class="pct">Target ₹${t.target}</div></div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        box.innerHTML = '<div class="empty">Failed to load trades.</div>';
+      }
+    }
+
+    function switchTab(tab) {
+      document.getElementById('tabSignals').classList.toggle('active', tab === 'signals');
+      document.getElementById('tabTrades').classList.toggle('active', tab === 'trades');
+      document.getElementById('signalsView').style.display = tab === 'signals' ? 'block' : 'none';
+      document.getElementById('tradesView').style.display = tab === 'trades' ? 'block' : 'none';
+      if (tab === 'trades') loadTrades();
+    }
+
+    loadStatus();
+    loadSignals();
+    setInterval(loadSignals, 60000);
+  </script>
+</body>
+</html>
+
