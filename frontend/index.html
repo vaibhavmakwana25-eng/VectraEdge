@@ -70,7 +70,6 @@
       </div>
     </div>
 
-    <!-- 5 Indices Live Price + Point +- + % Strip right below Date & Time -->
     <div id="index-live-strip" class="max-w-md mx-auto mt-2 flex gap-1.5 overflow-x-auto text-[10px]"></div>
 
     <div class="relative max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
@@ -103,7 +102,7 @@
       </div>
     </div>
 
-    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-4 text-center text-[11px] border-b border-[#1e2536]">
+    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-[11px] border-b border-[#1e2536]">
       <button id="tab-fno" onclick="switchTab('fno')" class="py-2 tab-active flex flex-col items-center justify-center gap-0.5">
         <span>Options (<span id="fno-total">0</span>)</span>
         <span class="text-[10px] font-semibold"><span id="fno-profit" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="fno-loss" class="text-rose-400">0</span></span>
@@ -115,10 +114,6 @@
       <button id="tab-trades" onclick="switchTab('trades')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
         <span>Trades (<span id="trd-total">0</span>)</span>
         <span class="text-[10px] font-semibold"><span id="trd-live" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="trd-closed" class="text-rose-400">0</span></span>
-      </button>
-      <button id="tab-backtest" onclick="switchTab('backtest')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
-        <span>Backtest</span>
-        <span class="text-[10px] font-semibold text-cyan-300">IND+VOL</span>
       </button>
     </nav>
   </header>
@@ -146,17 +141,29 @@
         <span id="best-MIDCPNIFTY" class="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 text-[10px] font-extrabold">--%</span>
       </button>
     </div>
-    <div class="flex gap-2">
-      <button onclick="setFnoStyle('ALL')" id="fstyle-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold">All Scripts</button>
-      <button onclick="setFnoStyle('SCALP')" id="fstyle-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]">Scalping ⚡</button>
+    <div class="flex items-center justify-between gap-1.5 overflow-x-auto">
+      <div class="flex gap-1.5 shrink-0">
+        <button onclick="setFnoStyle('ALL')" id="fstyle-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold">All Scripts</button>
+        <button onclick="setFnoStyle('SCALP')" id="fstyle-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]">Scalping ⚡</button>
+      </div>
+      <div class="flex gap-1 shrink-0">
+        <button onclick="setInvestSort('LOW_HIGH')" id="inv-fno-LOW_HIGH" class="px-2 py-1 rounded-lg text-[11px] bg-[#131722] text-slate-300 border border-[#1e2536]">Inv: Low → High</button>
+        <button onclick="setInvestSort('HIGH_LOW')" id="inv-fno-HIGH_LOW" class="px-2 py-1 rounded-lg text-[11px] bg-[#131722] text-slate-300 border border-[#1e2536]">Inv: High → Low</button>
+      </div>
     </div>
   </div>
 
-  <div id="stock-filters" class="hidden max-w-md mx-auto px-4 pt-3 flex gap-1.5 overflow-x-auto">
-    <button onclick="setStockMode('ALL')" id="flt-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold shrink-0">All Stocks</button>
-    <button onclick="setStockMode('Intraday')" id="flt-Intraday" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Intraday</button>
-    <button onclick="setStockMode('Long/Swing')" id="flt-Long/Swing" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Long / Swing</button>
-    <button onclick="setStockMode('SCALP')" id="flt-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Scalping ⚡</button>
+  <div id="stock-filters" class="hidden max-w-md mx-auto px-4 pt-3 space-y-2 text-xs">
+    <div class="flex gap-1.5 overflow-x-auto">
+      <button onclick="setStockMode('ALL')" id="flt-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold shrink-0">All Stocks</button>
+      <button onclick="setStockMode('Intraday')" id="flt-Intraday" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Intraday</button>
+      <button onclick="setStockMode('Long/Swing')" id="flt-Long/Swing" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Long / Swing</button>
+      <button onclick="setStockMode('SCALP')" id="flt-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Scalping ⚡</button>
+    </div>
+    <div class="flex gap-1.5 overflow-x-auto">
+      <button onclick="setInvestSort('LOW_HIGH')" id="inv-stk-LOW_HIGH" class="px-2.5 py-1 rounded-lg text-[11px] bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Inv: Low → High</button>
+      <button onclick="setInvestSort('HIGH_LOW')" id="inv-stk-HIGH_LOW" class="px-2.5 py-1 rounded-lg text-[11px] bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Inv: High → Low</button>
+    </div>
   </div>
 
   <main id="swipe-area" class="max-w-md mx-auto px-4 pt-3 space-y-3 min-h-[65vh]">
@@ -208,7 +215,7 @@
   </div>
 
   <script>
-    const TABS = ['fno', 'stocks', 'trades', 'backtest'];
+    const TABS = ['fno', 'stocks', 'trades'];
     const INDEX_TABS = ['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'MIDCPNIFTY'];
     const INDEX_META = {
       NIFTY: { spot: 25227.95, prevClose: 25387.40, step: 50, lot: 75, baseLtp: 142 },
@@ -220,17 +227,25 @@
     const STOCK_NAMES = [
       "RELIANCE","TCS","HDFCBANK","ICICIBANK","INFY","BHARTIARTL","SBIN","LT","ITC","HINDUNILVR",
       "BAJFINANCE","MARUTI","SUNPHARMA","ADANIENT","TITAN","AXISBANK","KOTAKBANK","NTPC","ONGC","TATASTEEL",
-      "TATAMOTORS","M&M","POWERGRID","ULTRACEMCO","ASIANPAINT","BAJAJFINSV","NESTLEIND","WIPRO","HCLTECH","TECHM"
+      "TATAMOTORS","M&M","POWERGRID","ULTRACEMCO","ASIANPAINT","BAJAJFINSV","NESTLEIND","WIPRO","HCLTECH","TECHM",
+      "JSWSTEEL","ADANIPORTS","COALINDIA","GRASIM","HINDALCO","INDUSINDBK","DRREDDY","CIPLA","APOLLOHOSP","EICHERMOT",
+      "DIVISLAB","BPCL","BRITANNIA","HEROMOTOCO","TATACONSUM","SBILIFE","HDFCLIFE","BAJAJ-AUTO","SHRIRAMFIN","TRENT",
+      "BEL","HAL","BHEL","PNB","BANKBARODA","CANBK","UNIONBANK","INDHOTEL","CHOLAFIN","DLF",
+      "GODREJPROP","OBEROIRLTY","LODHA","POLYCAB","HAVELLS","SIEMENS","ABB","CGPOWER","CUMMINSIND","VOLTAS",
+      "ZOMATO","PAYTM","NAUKRI","POLICYBZR","IRCTC","RVNL","IRFC","MAZDOCK","COCHINSHIP","BDL",
+      "SUZLON","TATAELXSI","KPITTECH","PERSISTENT","COFORGE","MPHASIS","LTIM","LTTS","DIXON","AMBER",
+      "PIDILITIND","BERGEPAINT","DABUR","MARICO","GODREJCP","COLPAL","VBL","UBL","UNITDSPR","JUBLFOOD"
     ];
 
-    const CACHE_KEY = 'vectra_signals_cache_v9';
-    const HISTORY_KEY = 'vectra_date_snapshots_v5';
+    const CACHE_KEY = 'vectra_signals_cache_v10';
+    const HISTORY_KEY = 'vectra_date_snapshots_v6';
     let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
     let indexMode = 'NIFTY';
     let fnoStyle = 'ALL';
     let stockMode = 'ALL';
+    let investSort = 'NONE';
     let selectedSignal = null;
     let activeStrategy = null;
     let qtyMap = {};
@@ -240,12 +255,6 @@
     let selMonth = 'ALL';
     let selDay = 'ALL';
     let activeCalType = null;
-
-    let btSymbols = 'NIFTY, BANKNIFTY, SENSEX, FINNIFTY, MIDCPNIFTY, RELIANCE, HDFCBANK, TCS';
-    let btSide = 'BUY';
-    let btOnlyPassed = false;
-    let btResults = [];
-    let btStatus = 'Ready to scan indicators + volume + backtest rules.';
 
     let ringEnabled = JSON.parse(localStorage.getItem('vectra_ring_on') ?? 'true');
     let vibEnabled = JSON.parse(localStorage.getItem('vectra_vib_on') ?? 'true');
@@ -360,7 +369,7 @@
 
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
-          new Notification('VectraEdge Verified Signal (' + prob + '%)', {
+          new Notification('VectraEdge Signal (' + prob + '%)', {
             body: (topSig.symbol || '') + ' - LTP ₹' + topSig.ltp,
             silent: !ringEnabled
           });
@@ -540,6 +549,20 @@
       renderAll();
     }
 
+    function setInvestSort(mode) {
+      investSort = (investSort === mode) ? 'NONE' : mode;
+      ['fno', 'stk'].forEach(prefix => {
+        ['LOW_HIGH', 'HIGH_LOW'].forEach(m => {
+          const el = document.getElementById('inv-' + prefix + '-' + m);
+          if (!el) return;
+          const active = (investSort === m);
+          el.className = (prefix === 'fno' ? 'px-2 py-1 rounded-lg text-[11px] ' : 'px-2.5 py-1 rounded-lg text-[11px] shrink-0 ') +
+            (active ? 'bg-amber-400 text-black font-bold' : 'bg-[#131722] text-slate-300 border border-[#1e2536]');
+        });
+      });
+      renderAll();
+    }
+
     function extractLiveSpotsFromBackend(backendList) {
       const spots = {};
       INDEX_TABS.forEach(k => {
@@ -595,7 +618,6 @@
             const winProb = Math.min(89, Math.max(54, probWave));
             const volRatio = Number((1.05 + ((distSteps === 0 ? 0.45 : 0.15) + ((oIdx + dayNum) % 4) * 0.12)).toFixed(2));
             const btWin = Math.min(88, Math.max(55, winProb - 1));
-            const rulePassed = Boolean(distSteps <= 3 && volRatio >= 1.15 && btWin >= 62);
 
             list.push(normalizeSignal({
               symbol: idxName + ' ' + strike + ' ' + optType,
@@ -608,7 +630,7 @@
               loss_prob: 100 - winProb,
               backtest_win_rate: btWin,
               vol_ratio: volRatio,
-              rule_passed: rulePassed,
+              rule_passed: true,
               lot_size: meta.lot
             }));
 
@@ -626,7 +648,7 @@
                 loss_prob: 100 - sWin,
                 backtest_win_rate: Math.min(87, btWin + 1),
                 vol_ratio: Math.max(1.25, volRatio),
-                rule_passed: Boolean(sWin >= 64 && Math.max(1.25, volRatio) >= 1.2),
+                rule_passed: true,
                 lot_size: meta.lot
               }));
             }
@@ -641,7 +663,6 @@
         const winProb = Math.min(88, Math.max(55, 60 + ((sIdx * 5 + dayNum * 3) % 27)));
         const volRatio = Number((1.05 + (((sIdx + dayNum) % 8) * 0.14)).toFixed(2));
         const btWin = Math.min(86, Math.max(55, winProb - 1));
-        const rulePassed = Boolean(btWin >= 62 && volRatio >= 1.15);
 
         list.push(normalizeSignal({
           symbol: sym + ' [' + mode + ']',
@@ -654,7 +675,7 @@
           loss_prob: 100 - winProb,
           backtest_win_rate: btWin,
           vol_ratio: volRatio,
-          rule_passed: rulePassed,
+          rule_passed: true,
           lot_size: 1
         }));
       });
@@ -771,7 +792,7 @@
       const btWin = parseInt(s.backtest_win_rate || win, 10);
       s.backtest_win_rate = btWin;
       s.vol_ratio = volRatio;
-      s.rule_passed = (typeof s.rule_passed === 'boolean') ? s.rule_passed : Boolean(btWin >= 62 && volRatio >= 1.15);
+      s.rule_passed = true;
 
       const lv = computeLiveLevels(s, s.is_fno ? (s.lot_size || 1) : 1);
       s.entry = lv.entry;
@@ -806,7 +827,7 @@
             loss_prob: 100 - sWin,
             backtest_win_rate: Math.min(87, sWin),
             vol_ratio: volR,
-            rule_passed: Boolean(sWin >= 62 && volR >= 1.15),
+            rule_passed: true,
             lot_size: 1
           }));
         }
@@ -848,7 +869,7 @@
           localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
           saveTodaySnapshot(allSignals);
           syncLiveTradesWithMarket(merged);
-          const sortedAll = merged.filter(x => !x.is_scalp && x.rule_passed).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+          const sortedAll = merged.filter(x => !x.is_scalp).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
           triggerStrongAlert(sortedAll[0]);
         }
       } catch (e) {
@@ -880,88 +901,6 @@
       localStorage.setItem('vectra_trades', JSON.stringify(myTrades));
     }
 
-    function buildBacktestRowFromPool(sym, side) {
-      const cleanSym = sym.trim().toUpperCase();
-      if (INDEX_META[cleanSym]) {
-        const m = INDEX_META[cleanSym];
-        const ltp = m.spot;
-        const pts = Number((m.spot - m.prevClose).toFixed(2));
-        const pct = Number(((pts / m.prevClose) * 100).toFixed(2));
-        const entry = Number((ltp * (side === 'BUY' ? 1.002 : 0.998)).toFixed(2));
-        const target = Number((entry * (side === 'BUY' ? 1.022 : 0.978)).toFixed(2));
-        const sl = Number((entry * (side === 'BUY' ? 0.988 : 1.012)).toFixed(2));
-        return {
-          symbol: cleanSym,
-          side,
-          ltp,
-          pts,
-          pct,
-          entry,
-          target,
-          sl,
-          trades_tested: 16,
-          win_rate: 67.5,
-          vol_ratio: 1.24,
-          rsi: 56.8,
-          passed: true
-        };
-      }
-      const found = (allSignals || []).find(s => (s.symbol || '').toUpperCase().includes(cleanSym));
-      if (found) {
-        const ltp = found.ltp || 100;
-        const entry = Number((ltp * (side === 'BUY' ? 1.002 : 0.998)).toFixed(2));
-        const target = Number((entry * (side === 'BUY' ? 1.022 : 0.978)).toFixed(2));
-        const sl = Number((entry * (side === 'BUY' ? 0.988 : 1.012)).toFixed(2));
-        const winRate = found.backtest_win_rate || found.win_prob || 65;
-        const volRatio = found.vol_ratio || 1.25;
-        const passed = Boolean(winRate >= 62 && volRatio >= 1.15);
-        return {
-          symbol: cleanSym,
-          side,
-          ltp,
-          entry,
-          target,
-          sl,
-          trades_tested: 18,
-          win_rate: winRate,
-          vol_ratio: volRatio,
-          rsi: found.rsi || 58.4,
-          passed
-        };
-      }
-      const fallbackLtp = 1250;
-      const entry = Number((fallbackLtp * (side === 'BUY' ? 1.002 : 0.998)).toFixed(2));
-      const target = Number((entry * (side === 'BUY' ? 1.022 : 0.978)).toFixed(2));
-      const sl = Number((entry * (side === 'BUY' ? 0.988 : 1.012)).toFixed(2));
-      return {
-        symbol: cleanSym,
-        side,
-        ltp: fallbackLtp,
-        entry,
-        target,
-        sl,
-        trades_tested: 12,
-        win_rate: 66.5,
-        vol_ratio: 1.22,
-        rsi: 56.0,
-        passed: true
-      };
-    }
-
-    function runBacktestScan() {
-      const inp = document.getElementById('bt-sym-input');
-      const sideSel = document.getElementById('bt-side-sel');
-      if (inp) btSymbols = inp.value;
-      if (sideSel) btSide = sideSel.value;
-
-      const rawSyms = btSymbols.split(',').map(s => s.trim()).filter(Boolean);
-      const out = rawSyms.map(sym => buildBacktestRowFromPool(sym, btSide));
-      out.sort((a, b) => (b.passed - a.passed) || (b.win_rate - a.win_rate));
-      btResults = out;
-      btStatus = 'Checked ' + out.length + ' symbols (' + out.filter(x => x.passed).length + ' PASSED indicator + volume rules).';
-      renderAll();
-    }
-
     function switchTab(tab) {
       if (!TABS.includes(tab)) return;
       currentTab = tab;
@@ -972,11 +911,7 @@
       });
       document.getElementById('fno-filters').classList.toggle('hidden', tab !== 'fno');
       document.getElementById('stock-filters').classList.toggle('hidden', tab !== 'stocks');
-      if (tab === 'backtest' && !btResults.length) {
-        runBacktestScan();
-      } else {
-        renderAll();
-      }
+      renderAll();
     }
 
     function setIndexMode(idxName) {
@@ -1055,16 +990,31 @@
 
     function getAllFnoPool() {
       const src = getActiveSourcePool();
-      const filtered = src.filter(s => s.is_fno && s.rule_passed && matchesCalendarFilter(s));
-      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => s.is_fno && s.rule_passed);
+      const filtered = src.filter(s => s.is_fno && matchesCalendarFilter(s));
+      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => s.is_fno);
       return base.filter(s => INDEX_TABS.includes(s.index_name || detectIndexName(s.symbol)));
     }
 
     function getAllStocksPool() {
       const src = getActiveSourcePool();
-      const filtered = src.filter(s => !s.is_fno && s.rule_passed && matchesCalendarFilter(s));
-      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => !s.is_fno && s.rule_passed);
-      return expandStocksWithScalp(base).filter(s => s.rule_passed);
+      const filtered = src.filter(s => !s.is_fno && matchesCalendarFilter(s));
+      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => !s.is_fno);
+      return expandStocksWithScalp(base);
+    }
+
+    function sortByInvestmentIfSelected(list) {
+      if (investSort === 'NONE') {
+        return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+      }
+      const withInv = list.map(s => {
+        const units = getUnits(s);
+        const lotSize = s.is_fno ? (s.lot_size || 1) : 1;
+        const lv = computeLiveLevels(s, units * lotSize);
+        const { investAmt } = calcInvestment(s, units, lv.entry);
+        return { s, investAmt };
+      });
+      withInv.sort((a, b) => (investSort === 'LOW_HIGH') ? (a.investAmt - b.investAmt) : (b.investAmt - a.investAmt));
+      return withInv.map(x => x.s);
     }
 
     function getTabList(tabName) {
@@ -1075,7 +1025,7 @@
         } else {
           list = list.filter(s => !s.is_scalp);
         }
-        return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+        return sortByInvestmentIfSelected(list);
       }
       let list = getAllStocksPool();
       if (stockMode === 'SCALP') {
@@ -1085,7 +1035,7 @@
       } else {
         list = list.filter(s => !s.is_scalp);
       }
-      return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+      return sortByInvestmentIfSelected(list);
     }
 
     function updateBestIndexBadges() {
@@ -1130,51 +1080,6 @@
       updateHeaderCounts();
       const container = document.getElementById('main-list');
 
-      if (currentTab === 'backtest') {
-        const shown = btOnlyPassed ? btResults.filter(x => x.passed) : btResults;
-        container.innerHTML =
-          '<div class="card-bg rounded-xl p-3 space-y-2 text-xs">' +
-            '<div class="flex gap-2">' +
-              '<input id="bt-sym-input" type="text" value="' + btSymbols.replace(/"/g, '&quot;') + '" class="flex-1 bg-[#0b0e14] border border-[#2a3449] rounded-lg px-2.5 py-1.5 text-white" />' +
-              '<button onclick="runBacktestScan()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold">Scan</button>' +
-            '</div>' +
-            '<div class="flex items-center justify-between">' +
-              '<label class="flex items-center gap-1.5 text-slate-300">' +
-                '<input type="checkbox" ' + (btOnlyPassed ? 'checked' : '') + ' onchange="btOnlyPassed = this.checked; renderAll();" />' +
-                '<span>Only PASSED</span>' +
-              '</label>' +
-              '<select id="bt-side-sel" onchange="runBacktestScan()" class="bg-[#0b0e14] border border-[#2a3449] rounded-lg px-2 py-1 text-white">' +
-                '<option value="BUY" ' + (btSide === 'BUY' ? 'selected' : '') + '>BUY Rules</option>' +
-                '<option value="SELL" ' + (btSide === 'SELL' ? 'selected' : '') + '>SELL Rules</option>' +
-              '</select>' +
-            '</div>' +
-          '</div>' +
-          '<div class="text-[11px] text-slate-400">' + btStatus + '</div>' +
-          (shown.length
-            ? shown.map(item =>
-                '<div class="card-bg rounded-xl p-3 text-xs space-y-1.5">' +
-                  '<div class="flex justify-between items-center">' +
-                    '<span class="font-bold text-white text-sm">' + item.symbol + '</span>' +
-                    '<span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (item.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400') + '">' + (item.passed ? 'PASSED' : 'FILTERED') + '</span>' +
-                  '</div>' +
-                  '<div class="flex justify-between text-slate-300">' +
-                    '<span>BT Win: <strong class="text-emerald-400">' + item.win_rate + '%</strong> (' + item.trades_tested + ' trades)</span>' +
-                    '<span>Vol: <strong class="text-cyan-300">' + item.vol_ratio + 'x</strong></span>' +
-                    '<span>RSI: <strong class="text-amber-300">' + item.rsi + '</strong></span>' +
-                  '</div>' +
-                  '<div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-[#1e2536]">' +
-                    '<span>Price: ₹' + item.ltp + '</span>' +
-                    '<span>Entry: ₹' + item.entry + '</span>' +
-                    '<span class="text-emerald-400">Tgt: ₹' + item.target + '</span>' +
-                    '<span class="text-rose-400">SL: ₹' + item.sl + '</span>' +
-                  '</div>' +
-                '</div>'
-              ).join('')
-            : '<div class="card-bg rounded-xl p-4 text-center text-xs text-slate-400">No setups passed right now.</div>'
-          );
-        return;
-      }
-
       if (currentTab === 'trades') {
         if (!myTrades.length) {
           container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No trades logged yet. Tap any signal to accept and track live.</div>';
@@ -1214,11 +1119,11 @@
       const filtered = getTabList(currentTab);
 
       if (!filtered.length) {
-        container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No indicator + volume + backtest matched setups right now.</div>';
+        container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No setups match right now.</div>';
         return;
       }
 
-      const topProb = filtered[0].win_prob || 0;
+      const topProb = Math.max.apply(null, filtered.map(x => x.win_prob || 0));
 
       container.innerHTML = filtered.map((s, i) => {
         const key = getSigKey(s);
