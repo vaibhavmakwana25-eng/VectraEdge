@@ -1,4 +1,4 @@
-import os, sys, json, pathlib
+﻿import os, sys, json, pathlib
 from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -60,10 +60,7 @@ class VectraHandler(BaseHTTPRequestHandler):
             })
         if path in ("/api/signals", "/signals"):
             raw = get_market_candidates()
-            signals = orchestrator.scan_all(raw)
-            if not signals:
-                signals = raw
-            return self._send_json({"ok": True, "signals": signals})
+            return self._send_json({"ok": True, "signals": raw, "count": len(raw)})
         if path == "/api/trades":
             trades = load_latest_trades_backup()
             return self._send_json({"ok": True, "trades": trades})
@@ -103,3 +100,4 @@ if __name__ == "__main__":
     server = ThreadingHTTPServer(("0.0.0.0", port), VectraHandler)
     print(f"VectraEdge live on 0.0.0.0:{port}", flush=True)
     server.serve_forever()
+
