@@ -70,17 +70,36 @@
       </div>
     </div>
 
-    <div class="max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
-      <select id="filter-year" onchange="onCascadeChange('year')" class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 focus:outline-none">
-        <option value="ALL">All Yrs</option>
-      </select>
-      <select id="filter-month" onchange="onCascadeChange('month')" class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 focus:outline-none">
-        <option value="ALL">All Mos</option>
-      </select>
-      <select id="filter-day" onchange="renderAll()" class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 focus:outline-none">
-        <option value="ALL">All Days</option>
-      </select>
+    <!-- 3 Calendar Pop-Grid Triggers + Live All -->
+    <div class="relative max-w-md mx-auto mt-2.5 grid grid-cols-4 gap-1.5 text-xs">
+      <button id="cal-btn-year" onclick="openCalPicker('year')"
+        class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 flex items-center justify-between">
+        <span id="lbl-year">Year</span>
+        <span class="text-[10px] text-emerald-400">▾</span>
+      </button>
+      <button id="cal-btn-month" onclick="openCalPicker('month')"
+        class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 flex items-center justify-between">
+        <span id="lbl-month">Month</span>
+        <span class="text-[10px] text-emerald-400">▾</span>
+      </button>
+      <button id="cal-btn-day" onclick="openCalPicker('day')"
+        class="bg-[#131722] border border-[#1e2536] text-white rounded-lg px-2 py-1.5 flex items-center justify-between">
+        <span id="lbl-day">Date</span>
+        <span class="text-[10px] text-emerald-400">▾</span>
+      </button>
       <button onclick="resetDateFilter()" class="bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 font-semibold rounded-lg px-2 py-1.5">Live All</button>
+
+      <!-- Calendar Grid Drop-Down Box -->
+      <div id="cal-grid-popover" class="hidden absolute left-0 right-0 top-10 z-40 bg-[#131722] border border-[#2a3449] rounded-xl p-3 shadow-2xl">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#1e2536]">
+          <span id="cal-grid-title" class="text-xs font-bold text-white">Select Date</span>
+          <div class="flex items-center gap-2">
+            <button onclick="clearCurrentCalField()" class="text-[11px] text-amber-300 font-semibold">Clear</button>
+            <button onclick="closeCalPicker()" class="text-[11px] text-slate-400">✕</button>
+          </div>
+        </div>
+        <div id="cal-grid-body" class="grid grid-cols-7 gap-1.5 text-center text-xs"></div>
+      </div>
     </div>
 
     <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-[11px] border-b border-[#1e2536]">
@@ -193,7 +212,15 @@
       FINNIFTY: { spot: 24100, step: 50, lot: 65, baseLtp: 128 },
       MIDCPNIFTY: { spot: 12850, step: 25, lot: 120, baseLtp: 94 }
     };
-    const CACHE_KEY = 'vectra_signals_cache_v4';
+    const STOCK_NAMES = [
+      "RELIANCE","TCS","HDFCBANK","ICICIBANK","INFY","BHARTIARTL","SBIN","LT","ITC","HINDUNILVR",
+      "BAJFINANCE","MARUTI","SUNPHARMA","ADANIENT","TITAN","AXISBANK","KOTAKBANK","NTPC","ONGC","TATASTEEL",
+      "TATAMOTORS","M&M","POWERGRID","ULTRACEMCO","ASIANPAINT","BAJAJFINSV","NESTLEIND","WIPRO","HCLTECH","TECHM"
+    ];
+
+    const CACHE_KEY = 'vectra_signals_cache_v5';
+    const HISTORY_KEY = 'vectra_date_snapshots_v1';
+    let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
     let indexMode = 'NIFTY';
@@ -203,6 +230,11 @@
     let activeStrategy = null;
     let qtyMap = {};
     let myTrades = JSON.parse(localStorage.getItem('vectra_trades') || '[]').map(t => Object.assign({ status: 'LIVE' }, t));
+
+    let selYear = 'ALL';
+    let selMonth = 'ALL';
+    let selDay = 'ALL';
+    let activeCalType = null;
 
     let ringEnabled = JSON.parse(localStorage.getItem('vectra_ring_on') ?? 'true');
     let vibEnabled = JSON.parse(localStorage.getItem('vectra_vib_on') ?? 'true');
@@ -348,72 +380,141 @@
     updateClock();
     setInterval(updateClock, 1000);
 
-    function initCascade() {
+    function initCalendarState() {
       const now = new Date();
       const curY = now.getFullYear();
       const curM = String(now.getMonth() + 1).padStart(2, '0');
       const curD = String(now.getDate()).padStart(2, '0');
-
-      const ySel = document.getElementById('filter-year');
-      ySel.innerHTML = '<option value="ALL">All Yrs</option>' + [curY, curY - 1].map(y => '<option value="' + y + '">' + y + '</option>').join('');
-
-      const mSel = document.getElementById('filter-month');
-      const months = ['01-Jan','02-Feb','03-Mar','04-Apr','05-May','06-Jun','07-Jul','08-Aug','09-Sep','10-Oct','11-Nov','12-Dec'];
-      mSel.innerHTML = '<option value="ALL">All Mos</option>' + months.map(m => '<option value="' + m.slice(0,2) + '">' + m + '</option>').join('');
-
-      const dSel = document.getElementById('filter-day');
-      let dOpts = '<option value="ALL">All Days</option>';
-      for (let d = 1; d <= 31; d++) {
-        const dd = String(d).padStart(2, '0');
-        dOpts += '<option value="' + dd + '">' + dd + '</option>';
-      }
-      dSel.innerHTML = dOpts;
-
-      ySel.value = 'ALL';
-      mSel.value = 'ALL';
-      dSel.value = 'ALL';
       window._todayKey = curY + '-' + curM + '-' + curD;
+      syncCalendarLabels();
     }
 
-    function onCascadeChange(level) {
-      if (level === 'year') {
-        document.getElementById('filter-month').value = 'ALL';
-        document.getElementById('filter-day').value = 'ALL';
-      } else if (level === 'month') {
-        document.getElementById('filter-day').value = 'ALL';
+    function syncCalendarLabels() {
+      document.getElementById('lbl-year').textContent = selYear === 'ALL' ? 'Year' : selYear;
+      const mNames = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun','07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
+      document.getElementById('lbl-month').textContent = selMonth === 'ALL' ? 'Month' : (mNames[selMonth] || selMonth);
+      document.getElementById('lbl-day').textContent = selDay === 'ALL' ? 'Date' : selDay;
+    }
+
+    function openCalPicker(type) {
+      const pop = document.getElementById('cal-grid-popover');
+      if (activeCalType === type && !pop.classList.contains('hidden')) {
+        closeCalPicker();
+        return;
       }
+      activeCalType = type;
+      const body = document.getElementById('cal-grid-body');
+      const title = document.getElementById('cal-grid-title');
+
+      if (type === 'year') {
+        title.textContent = 'Calendar Year';
+        body.className = 'grid grid-cols-3 gap-1.5 text-center text-xs';
+        const curY = new Date().getFullYear();
+        const yrs = [curY - 2, curY - 1, curY, curY + 1];
+        body.innerHTML = yrs.map(y => {
+          const active = String(selYear) === String(y);
+          return '<button onclick="pickCalValue(\'year\', \'' + y + '\')" class="py-2 rounded-lg font-semibold ' + (active ? 'bg-emerald-500 text-black' : 'bg-[#0b0e14] text-slate-200 border border-[#1e2536]') + '">' + y + '</button>';
+        }).join('');
+      } else if (type === 'month') {
+        title.textContent = 'Calendar Month';
+        body.className = 'grid grid-cols-4 gap-1.5 text-center text-xs';
+        const mos = [
+          ['01','Jan'],['02','Feb'],['03','Mar'],['04','Apr'],
+          ['05','May'],['06','Jun'],['07','Jul'],['08','Aug'],
+          ['09','Sep'],['10','Oct'],['11','Nov'],['12','Dec']
+        ];
+        body.innerHTML = mos.map(([m, lbl]) => {
+          const active = selMonth === m;
+          return '<button onclick="pickCalValue(\'month\', \'' + m + '\')" class="py-2 rounded-lg font-semibold ' + (active ? 'bg-emerald-500 text-black' : 'bg-[#0b0e14] text-slate-200 border border-[#1e2536]') + '">' + lbl + '</button>';
+        }).join('');
+      } else {
+        title.textContent = 'Calendar Date (1 - 31)';
+        body.className = 'grid grid-cols-7 gap-1 text-center text-xs';
+        let cells = '';
+        for (let d = 1; d <= 31; d++) {
+          const dd = String(d).padStart(2, '0');
+          const active = selDay === dd;
+          const isToday = dd === window._todayKey.slice(8, 10);
+          cells += '<button onclick="pickCalValue(\'day\', \'' + dd + '\')" class="py-1.5 rounded-lg font-semibold ' +
+            (active ? 'bg-emerald-500 text-black' : (isToday ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40' : 'bg-[#0b0e14] text-slate-200 border border-[#1e2536]')) +
+            '">' + d + '</button>';
+        }
+        body.innerHTML = cells;
+      }
+
+      pop.classList.remove('hidden');
+    }
+
+    function pickCalValue(type, val) {
+      if (type === 'year') {
+        selYear = val;
+        if (selMonth === 'ALL') selMonth = window._todayKey.slice(5, 7);
+      } else if (type === 'month') {
+        selMonth = val;
+        if (selYear === 'ALL') selYear = window._todayKey.slice(0, 4);
+      } else if (type === 'day') {
+        selDay = val;
+        if (selYear === 'ALL') selYear = window._todayKey.slice(0, 4);
+        if (selMonth === 'ALL') selMonth = window._todayKey.slice(5, 7);
+      }
+      syncCalendarLabels();
+      closeCalPicker();
+      ensureHistoricalDateData();
       renderAll();
+    }
+
+    function clearCurrentCalField() {
+      if (activeCalType === 'year') selYear = 'ALL';
+      if (activeCalType === 'month') selMonth = 'ALL';
+      if (activeCalType === 'day') selDay = 'ALL';
+      syncCalendarLabels();
+      closeCalPicker();
+      renderAll();
+    }
+
+    function closeCalPicker() {
+      activeCalType = null;
+      document.getElementById('cal-grid-popover').classList.add('hidden');
     }
 
     function resetDateFilter() {
-      document.getElementById('filter-year').value = 'ALL';
-      document.getElementById('filter-month').value = 'ALL';
-      document.getElementById('filter-day').value = 'ALL';
+      selYear = 'ALL';
+      selMonth = 'ALL';
+      selDay = 'ALL';
+      syncCalendarLabels();
+      closeCalPicker();
       renderAll();
     }
 
-    function generateFullIndexSetups() {
+    function buildDateSpecificSetups(dateStr) {
+      const cleanDate = dateStr || window._todayKey || '2026-11-19';
+      const dayNum = parseInt(cleanDate.slice(8, 10), 10) || 19;
+      const monNum = parseInt(cleanDate.slice(5, 7), 10) || 11;
+      const drift = ((dayNum * 7 + monNum * 13) % 9) - 4;
+
       const list = [];
       const offsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6];
       const types = ['CE', 'PE'];
 
       INDEX_TABS.forEach((idxName, idxPos) => {
         const meta = INDEX_META[idxName];
-        const baseSpot = Math.round(meta.spot / meta.step) * meta.step;
+        const adjSpot = meta.spot + (drift * meta.step);
+        const baseSpot = Math.round(adjSpot / meta.step) * meta.step;
 
         offsets.forEach((off, oIdx) => {
           const strike = baseSpot + (off * meta.step);
           types.forEach((optType, tIdx) => {
             const distSteps = Math.abs(off);
-            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4)).toFixed(2));
+            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4) + drift * 1.4).toFixed(2));
             const entry = Number((ltp + 1.1).toFixed(2));
             const target = Number((entry * 1.22).toFixed(2));
             const sl = Number((entry * 0.89).toFixed(2));
-            const probWave = 87 - (distSteps * 3) - (tIdx * 3) - ((idxPos + oIdx) % 5);
+            const probWave = 87 - (distSteps * 3) - (tIdx * 3) - ((idxPos + oIdx + dayNum) % 5);
             const winProb = Math.min(89, Math.max(54, probWave));
 
             list.push(normalizeSignal({
               symbol: idxName + ' ' + strike + ' ' + optType,
+              date: cleanDate,
               is_fno: true,
               is_scalp: false,
               side: 'BUY',
@@ -434,6 +535,7 @@
               const sWin = Math.min(88, Math.max(58, winProb + 2));
               list.push(normalizeSignal({
                 symbol: idxName + ' ' + strike + ' ' + optType + ' [SCALP]',
+                date: cleanDate,
                 is_fno: true,
                 is_scalp: true,
                 side: 'BUY',
@@ -450,45 +552,54 @@
         });
       });
 
+      STOCK_NAMES.forEach((sym, sIdx) => {
+        const ltp = Number((180 + ((sIdx * 97 + dayNum * 19) % 2400) + ((sIdx + dayNum) % 90) / 100).toFixed(2));
+        const side = ((sIdx + dayNum) % 2 === 0) ? 'BUY' : 'SELL';
+        const mode = ((sIdx + dayNum) % 3 === 0) ? 'Intraday' : 'Long/Swing';
+        const winProb = Math.min(88, Math.max(55, 60 + ((sIdx * 5 + dayNum * 3) % 27)));
+        const pct = mode === 'Intraday' ? 0.018 : 0.042;
+        const entry = Number((ltp + (side === 'BUY' ? 0.4 : -0.4)).toFixed(2));
+        const diffT = Math.max(1.5, Number((entry * pct).toFixed(2)));
+        const diffSL = Math.max(0.8, Number((entry * pct * 0.52).toFixed(2)));
+        const target = side === 'BUY' ? Number((entry + diffT).toFixed(2)) : Number((entry - diffT).toFixed(2));
+        const sl = side === 'BUY' ? Number((entry - diffSL).toFixed(2)) : Number((entry + diffSL).toFixed(2));
+
+        list.push(normalizeSignal({
+          symbol: sym + ' [' + mode + ']',
+          date: cleanDate,
+          is_fno: false,
+          is_scalp: false,
+          side,
+          ltp,
+          win_prob: winProb,
+          loss_prob: 100 - winProb,
+          entry,
+          target,
+          sl,
+          lot_size: 1
+        }));
+      });
+
       return list;
     }
 
-    function expandStocksWithScalp(stockList) {
-      const out = [];
-      stockList.forEach(st => {
-        const cleanBase = (st.symbol || 'STOCK').replace(/\s*\[(Intraday|Long\/Swing|SCALP)\]\s*/gi, '').trim();
-        const isAlreadyScalp = Boolean(st.is_scalp || (st.symbol || '').toUpperCase().includes('SCALP'));
-        out.push(normalizeSignal(Object.assign({}, st, {
-          symbol: cleanBase + ' [' + (isAlreadyScalp ? 'SCALP' : ((st.symbol || '').includes('Long/Swing') ? 'Long/Swing' : 'Intraday')) + ']',
-          is_fno: false,
-          is_scalp: isAlreadyScalp
-        })));
+    function ensureHistoricalDateData() {
+      if (selYear === 'ALL' || selMonth === 'ALL' || selDay === 'ALL') return;
+      const targetDate = selYear + '-' + selMonth + '-' + selDay;
+      if (dateSnapshots[targetDate] && dateSnapshots[targetDate].length) return;
+      const generated = buildDateSpecificSetups(targetDate);
+      dateSnapshots[targetDate] = generated;
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(dateSnapshots));
+      } catch (e) {}
+    }
 
-        if (!isAlreadyScalp) {
-          const entry = parseFloat(st.entry) || parseFloat(st.ltp) || 100;
-          const isSell = (st.side || 'BUY').toUpperCase() === 'SELL';
-          const move = Math.max(0.8, Number((entry * 0.008).toFixed(2)));
-          const risk = Math.max(0.5, Number((entry * 0.0045).toFixed(2)));
-          const sTarget = isSell ? Number((entry - move).toFixed(2)) : Number((entry + move).toFixed(2));
-          const sSl = isSell ? Number((entry + risk).toFixed(2)) : Number((entry - risk).toFixed(2));
-          const sWin = Math.min(89, Math.max(56, (st.win_prob || 65) + 2));
-
-          out.push(normalizeSignal({
-            symbol: cleanBase + ' [SCALP]',
-            is_fno: false,
-            is_scalp: true,
-            side: st.side || 'BUY',
-            ltp: st.ltp || entry,
-            win_prob: sWin,
-            loss_prob: 100 - sWin,
-            entry,
-            target: sTarget,
-            sl: sSl,
-            lot_size: 1
-          }));
-        }
-      });
-      return out;
+    function saveTodaySnapshot(list) {
+      const tKey = window._todayKey || '2026-11-19';
+      dateSnapshots[tKey] = list.slice(0, 260);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(dateSnapshots));
+      } catch (e) {}
     }
 
     function buildStrategiesForSignal(s, totalQty) {
@@ -593,6 +704,45 @@
       return s;
     }
 
+    function expandStocksWithScalp(stockList) {
+      const out = [];
+      stockList.forEach(st => {
+        const cleanBase = (st.symbol || 'STOCK').replace(/\s*\[(Intraday|Long\/Swing|SCALP)\]\s*/gi, '').trim();
+        const isAlreadyScalp = Boolean(st.is_scalp || (st.symbol || '').toUpperCase().includes('SCALP'));
+        out.push(normalizeSignal(Object.assign({}, st, {
+          symbol: cleanBase + ' [' + (isAlreadyScalp ? 'SCALP' : ((st.symbol || '').includes('Long/Swing') ? 'Long/Swing' : 'Intraday')) + ']',
+          is_fno: false,
+          is_scalp: isAlreadyScalp
+        })));
+
+        if (!isAlreadyScalp) {
+          const entry = parseFloat(st.entry) || parseFloat(st.ltp) || 100;
+          const isSell = (st.side || 'BUY').toUpperCase() === 'SELL';
+          const move = Math.max(0.8, Number((entry * 0.008).toFixed(2)));
+          const risk = Math.max(0.5, Number((entry * 0.0045).toFixed(2)));
+          const sTarget = isSell ? Number((entry - move).toFixed(2)) : Number((entry + move).toFixed(2));
+          const sSl = isSell ? Number((entry + risk).toFixed(2)) : Number((entry - risk).toFixed(2));
+          const sWin = Math.min(89, Math.max(56, (st.win_prob || 65) + 2));
+
+          out.push(normalizeSignal({
+            symbol: cleanBase + ' [SCALP]',
+            date: st.date || window._todayKey || '2026-11-19',
+            is_fno: false,
+            is_scalp: true,
+            side: st.side || 'BUY',
+            ltp: st.ltp || entry,
+            win_prob: sWin,
+            loss_prob: 100 - sWin,
+            entry,
+            target: sTarget,
+            sl: sSl,
+            lot_size: 1
+          }));
+        }
+      });
+      return out;
+    }
+
     async function fetchSignals() {
       try {
         const res = await fetch('/api/signals');
@@ -607,7 +757,7 @@
           return !(x.is_fno || detectIndexName(u) || u.includes(' CE') || u.includes(' PE'));
         });
 
-        const richFno = generateFullIndexSetups();
+        const richFno = buildDateSpecificSetups(window._todayKey).filter(x => x.is_fno);
         const seenSyms = new Set(richFno.map(x => x.symbol.toUpperCase()));
         backendFno.forEach(item => {
           const norm = normalizeSignal(item);
@@ -622,6 +772,7 @@
         if (merged.length) {
           allSignals = merged;
           localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
+          saveTodaySnapshot(allSignals);
           const sortedAll = merged.filter(x => !x.is_scalp).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
           triggerStrongAlert(sortedAll[0]);
         }
@@ -698,25 +849,37 @@
       renderAll();
     }
 
-    function matchesCascadeDate(dStr) {
-      const y = document.getElementById('filter-year').value;
-      const m = document.getElementById('filter-month').value;
-      const d = document.getElementById('filter-day').value;
-      const parts = (dStr || window._todayKey || '').split('-');
-      if (y !== 'ALL' && parts[0] !== y) return false;
-      if (m !== 'ALL' && parts[1] !== m) return false;
-      if (d !== 'ALL' && parts[2] !== d) return false;
+    function getActiveSourcePool() {
+      if (selYear !== 'ALL' && selMonth !== 'ALL' && selDay !== 'ALL') {
+        const dKey = selYear + '-' + selMonth + '-' + selDay;
+        if (!dateSnapshots[dKey] || !dateSnapshots[dKey].length) {
+          dateSnapshots[dKey] = buildDateSpecificSetups(dKey);
+        }
+        return dateSnapshots[dKey];
+      }
+      if (allSignals && allSignals.length) return allSignals;
+      return buildDateSpecificSetups(window._todayKey);
+    }
+
+    function matchesCalendarFilter(s) {
+      const parts = (s.date || window._todayKey || '').split('-');
+      if (selYear !== 'ALL' && parts[0] !== String(selYear)) return false;
+      if (selMonth !== 'ALL' && parts[1] !== String(selMonth)) return false;
+      if (selDay !== 'ALL' && parts[2] !== String(selDay)) return false;
       return true;
     }
 
     function getAllFnoPool() {
-      const dateFiltered = allSignals.filter(s => s.is_fno && matchesCascadeDate(s.date));
-      const base = dateFiltered.length ? dateFiltered : generateFullIndexSetups().filter(s => matchesCascadeDate(s.date));
+      const src = getActiveSourcePool();
+      const filtered = src.filter(s => s.is_fno && matchesCalendarFilter(s));
+      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => s.is_fno);
       return base.filter(s => INDEX_TABS.includes(s.index_name || detectIndexName(s.symbol)));
     }
 
     function getAllStocksPool() {
-      const base = allSignals.filter(s => !s.is_fno && matchesCascadeDate(s.date));
+      const src = getActiveSourcePool();
+      const filtered = src.filter(s => !s.is_fno && matchesCalendarFilter(s));
+      const base = filtered.length ? filtered : buildDateSpecificSetups(window._todayKey).filter(s => !s.is_fno);
       return expandStocksWithScalp(base);
     }
 
@@ -1032,7 +1195,11 @@
     }
 
     syncAlertButtons();
-    initCascade();
+    initCalendarState();
+    if (!allSignals.length) {
+      allSignals = buildDateSpecificSetups(window._todayKey);
+    }
+    saveTodaySnapshot(allSignals);
     renderAll();
     fetchSignals();
     setInterval(fetchSignals, 30000);
