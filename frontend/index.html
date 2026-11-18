@@ -38,7 +38,6 @@
         <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
         <h1 class="text-lg font-bold tracking-tight text-white">Vectra<span class="text-emerald-400">Edge</span></h1>
 
-        <!-- Ring & Vibration Toggle Icons -->
         <div class="flex items-center gap-1.5 ml-1">
           <button id="btn-ring" onclick="toggleRing()" title="Ring Alert"
             class="relative w-8 h-8 rounded-lg bg-[#131722] border border-[#1e2536] flex items-center justify-center text-emerald-400 active:scale-95 transition">
@@ -129,10 +128,11 @@
     </div>
   </div>
 
-  <div id="stock-filters" class="hidden max-w-md mx-auto px-4 pt-3 flex gap-2">
-    <button onclick="setStockMode('ALL')" id="flt-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold">All Stocks</button>
-    <button onclick="setStockMode('Intraday')" id="flt-Intraday" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]">Intraday</button>
-    <button onclick="setStockMode('Long/Swing')" id="flt-Long/Swing" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]">Long / Swing</button>
+  <div id="stock-filters" class="hidden max-w-md mx-auto px-4 pt-3 flex gap-1.5 overflow-x-auto">
+    <button onclick="setStockMode('ALL')" id="flt-ALL" class="px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold shrink-0">All Stocks</button>
+    <button onclick="setStockMode('Intraday')" id="flt-Intraday" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Intraday</button>
+    <button onclick="setStockMode('Long/Swing')" id="flt-Long/Swing" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Long / Swing</button>
+    <button onclick="setStockMode('SCALP')" id="flt-SCALP" class="px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0">Scalping ⚡</button>
   </div>
 
   <main id="swipe-area" class="max-w-md mx-auto px-4 pt-3 space-y-3 min-h-[65vh]">
@@ -193,7 +193,7 @@
       FINNIFTY: { spot: 24100, step: 50, lot: 65, baseLtp: 128 },
       MIDCPNIFTY: { spot: 12850, step: 25, lot: 120, baseLtp: 94 }
     };
-    const CACHE_KEY = 'vectra_signals_cache_v3';
+    const CACHE_KEY = 'vectra_signals_cache_v4';
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
     let indexMode = 'NIFTY';
@@ -275,7 +275,7 @@
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification('VectraEdge Strong Signal (' + prob + '%)', {
-            body: (topSig.symbol || '') + ' • Entry ₹' + topSig.entry + ' • Target ₹' + topSig.target,
+            body: (topSig.symbol || '') + ' - Entry ₹' + topSig.entry + ' - Target ₹' + topSig.target,
             silent: !ringEnabled
           });
         } catch (e) {}
@@ -394,7 +394,7 @@
 
     function generateFullIndexSetups() {
       const list = [];
-      const offsets = [-3, -2, -1, 0, 1, 2, 3];
+      const offsets = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6];
       const types = ['CE', 'PE'];
 
       INDEX_TABS.forEach((idxName, idxPos) => {
@@ -405,11 +405,11 @@
           const strike = baseSpot + (off * meta.step);
           types.forEach((optType, tIdx) => {
             const distSteps = Math.abs(off);
-            const ltp = Number(Math.max(45, meta.baseLtp - distSteps * (meta.step * 0.28) + (optType === 'CE' ? 6 : -4)).toFixed(2));
-            const entry = Number((ltp + 1.2).toFixed(2));
+            const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4)).toFixed(2));
+            const entry = Number((ltp + 1.1).toFixed(2));
             const target = Number((entry * 1.22).toFixed(2));
             const sl = Number((entry * 0.89).toFixed(2));
-            const probWave = 86 - (distSteps * 4) - (tIdx * 3) - ((idxPos + oIdx) % 5);
+            const probWave = 87 - (distSteps * 3) - (tIdx * 3) - ((idxPos + oIdx) % 5);
             const winProb = Math.min(89, Math.max(54, probWave));
 
             list.push(normalizeSignal({
@@ -426,10 +426,10 @@
               lot_size: meta.lot
             }));
 
-            if (distSteps <= 2) {
-              const sLtp = Number(Math.max(52, ltp * 0.96).toFixed(2));
-              const sEntry = Number((sLtp + 0.6).toFixed(2));
-              const sTarget = Number((sEntry * 1.09).toFixed(2));
+            if (distSteps <= 3) {
+              const sLtp = Number(Math.max(48, ltp * 0.96).toFixed(2));
+              const sEntry = Number((sLtp + 0.5).toFixed(2));
+              const sTarget = Number((sEntry * 1.08).toFixed(2));
               const sSl = Number((sEntry * 0.95).toFixed(2));
               const sWin = Math.min(88, Math.max(58, winProb + 2));
               list.push(normalizeSignal({
@@ -451,6 +451,44 @@
       });
 
       return list;
+    }
+
+    function expandStocksWithScalp(stockList) {
+      const out = [];
+      stockList.forEach(st => {
+        const cleanBase = (st.symbol || 'STOCK').replace(/\s*\[(Intraday|Long\/Swing|SCALP)\]\s*/gi, '').trim();
+        const isAlreadyScalp = Boolean(st.is_scalp || (st.symbol || '').toUpperCase().includes('SCALP'));
+        out.push(normalizeSignal(Object.assign({}, st, {
+          symbol: cleanBase + ' [' + (isAlreadyScalp ? 'SCALP' : ((st.symbol || '').includes('Long/Swing') ? 'Long/Swing' : 'Intraday')) + ']',
+          is_fno: false,
+          is_scalp: isAlreadyScalp
+        })));
+
+        if (!isAlreadyScalp) {
+          const entry = parseFloat(st.entry) || parseFloat(st.ltp) || 100;
+          const isSell = (st.side || 'BUY').toUpperCase() === 'SELL';
+          const move = Math.max(0.8, Number((entry * 0.008).toFixed(2)));
+          const risk = Math.max(0.5, Number((entry * 0.0045).toFixed(2)));
+          const sTarget = isSell ? Number((entry - move).toFixed(2)) : Number((entry + move).toFixed(2));
+          const sSl = isSell ? Number((entry + risk).toFixed(2)) : Number((entry - risk).toFixed(2));
+          const sWin = Math.min(89, Math.max(56, (st.win_prob || 65) + 2));
+
+          out.push(normalizeSignal({
+            symbol: cleanBase + ' [SCALP]',
+            is_fno: false,
+            is_scalp: true,
+            side: st.side || 'BUY',
+            ltp: st.ltp || entry,
+            win_prob: sWin,
+            loss_prob: 100 - sWin,
+            entry,
+            target: sTarget,
+            sl: sSl,
+            lot_size: 1
+          }));
+        }
+      });
+      return out;
     }
 
     function buildStrategiesForSignal(s, totalQty) {
@@ -579,11 +617,12 @@
           }
         });
 
-        const merged = richFno.concat(backendStocks.map(normalizeSignal));
+        const richStocks = expandStocksWithScalp(backendStocks);
+        const merged = richFno.concat(richStocks);
         if (merged.length) {
           allSignals = merged;
           localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
-          const sortedAll = merged.slice().sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
+          const sortedAll = merged.filter(x => !x.is_scalp).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
           triggerStrongAlert(sortedAll[0]);
         }
       } catch (e) {
@@ -650,11 +689,11 @@
 
     function setStockMode(mode) {
       stockMode = mode;
-      ['ALL', 'Intraday', 'Long/Swing'].forEach(m => {
+      ['ALL', 'Intraday', 'Long/Swing', 'SCALP'].forEach(m => {
         const el = document.getElementById('flt-' + m);
         el.className = (m === mode)
-          ? 'px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold'
-          : 'px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536]';
+          ? 'px-3 py-1 rounded-full text-xs bg-emerald-500 text-black font-semibold shrink-0'
+          : 'px-3 py-1 rounded-full text-xs bg-[#131722] text-slate-300 border border-[#1e2536] shrink-0';
       });
       renderAll();
     }
@@ -676,23 +715,34 @@
       return base.filter(s => INDEX_TABS.includes(s.index_name || detectIndexName(s.symbol)));
     }
 
+    function getAllStocksPool() {
+      const base = allSignals.filter(s => !s.is_fno && matchesCascadeDate(s.date));
+      return expandStocksWithScalp(base);
+    }
+
     function getTabList(tabName) {
       if (tabName === 'fno') {
         let list = getAllFnoPool().filter(s => (s.index_name || detectIndexName(s.symbol)) === indexMode);
         if (fnoStyle === 'SCALP') {
           list = list.filter(s => s.is_scalp);
+        } else {
+          list = list.filter(s => !s.is_scalp);
         }
         return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
       }
-      let list = allSignals.filter(s => !s.is_fno && matchesCascadeDate(s.date));
-      if (stockMode !== 'ALL') {
-        list = list.filter(s => (s.symbol || '').includes(stockMode));
+      let list = getAllStocksPool();
+      if (stockMode === 'SCALP') {
+        list = list.filter(s => s.is_scalp);
+      } else if (stockMode !== 'ALL') {
+        list = list.filter(s => !s.is_scalp && (s.symbol || '').includes(stockMode));
+      } else {
+        list = list.filter(s => !s.is_scalp);
       }
       return list.sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
     }
 
     function updateBestIndexBadges() {
-      const pool = getAllFnoPool();
+      const pool = getAllFnoPool().filter(s => !s.is_scalp);
       INDEX_TABS.forEach(name => {
         const items = pool.filter(s => (s.index_name || detectIndexName(s.symbol)) === name);
         const bestEl = document.getElementById('best-' + name);
@@ -707,8 +757,8 @@
 
     function updateHeaderCounts() {
       updateBestIndexBadges();
-      const fnoList = getAllFnoPool();
-      const stkList = getTabList('stocks');
+      const fnoList = getAllFnoPool().filter(s => !s.is_scalp);
+      const stkList = getAllStocksPool().filter(s => !s.is_scalp);
 
       const fnoP = fnoList.filter(s => (s.win_prob || 0) >= (s.loss_prob ?? (100 - (s.win_prob || 0)))).length;
       const fnoL = fnoList.length - fnoP;
