@@ -100,7 +100,7 @@
       </div>
     </div>
 
-    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-3 text-center text-[11px] border-b border-[#1e2536]">
+    <nav class="max-w-md mx-auto mt-2.5 grid grid-cols-4 text-center text-[11px] border-b border-[#1e2536]">
       <button id="tab-fno" onclick="switchTab('fno')" class="py-2 tab-active flex flex-col items-center justify-center gap-0.5">
         <span>Options (<span id="fno-total">0</span>)</span>
         <span class="text-[10px] font-semibold"><span id="fno-profit" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="fno-loss" class="text-rose-400">0</span></span>
@@ -112,6 +112,10 @@
       <button id="tab-trades" onclick="switchTab('trades')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
         <span>Trades (<span id="trd-total">0</span>)</span>
         <span class="text-[10px] font-semibold"><span id="trd-live" class="text-emerald-400">0</span> <span class="text-slate-600">/</span> <span id="trd-closed" class="text-rose-400">0</span></span>
+      </button>
+      <button id="tab-backtest" onclick="switchTab('backtest')" class="py-2 tab-inactive flex flex-col items-center justify-center gap-0.5">
+        <span>Backtest</span>
+        <span class="text-[10px] font-semibold text-cyan-300">IND+VOL</span>
       </button>
     </nav>
   </header>
@@ -171,7 +175,7 @@
       <div class="mt-3 bg-[#0b0e14] rounded-xl p-3 border border-[#1e2536]">
         <div class="flex justify-between text-[10px] text-slate-400 mb-2">
           <span>EMA 20/50 - VWAP - RSI (14) - BB - Vol</span>
-          <span class="text-emerald-400">Backtest + Live</span>
+          <span class="text-emerald-400">Live Entry / Exit</span>
         </div>
         <canvas id="signal-chart" height="100" class="w-full"></canvas>
       </div>
@@ -201,7 +205,7 @@
   </div>
 
   <script>
-    const TABS = ['fno', 'stocks', 'trades'];
+    const TABS = ['fno', 'stocks', 'trades', 'backtest'];
     const INDEX_TABS = ['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'MIDCPNIFTY'];
     const INDEX_META = {
       NIFTY: { spot: 25250, step: 50, lot: 75, baseLtp: 142 },
@@ -216,8 +220,8 @@
       "TATAMOTORS","M&M","POWERGRID","ULTRACEMCO","ASIANPAINT","BAJAJFINSV","NESTLEIND","WIPRO","HCLTECH","TECHM"
     ];
 
-    const CACHE_KEY = 'vectra_signals_cache_v7';
-    const HISTORY_KEY = 'vectra_date_snapshots_v3';
+    const CACHE_KEY = 'vectra_signals_cache_v8';
+    const HISTORY_KEY = 'vectra_date_snapshots_v4';
     let dateSnapshots = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     let allSignals = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     let currentTab = 'fno';
@@ -234,10 +238,38 @@
     let selDay = 'ALL';
     let activeCalType = null;
 
+    let btSymbols = '^NSEI, ^NSEBANK, RELIANCE, HDFCBANK, TCS, INFY, SBIN, TATAMOTORS';
+    let btSide = 'BUY';
+    let btOnlyPassed = true;
+    let btResults = [];
+    let btStatus = 'Ready to scan indicators + volume + historical candles.';
+
     let ringEnabled = JSON.parse(localStorage.getItem('vectra_ring_on') ?? 'true');
     let vibEnabled = JSON.parse(localStorage.getItem('vectra_vib_on') ?? 'true');
     let lastAlertSignature = localStorage.getItem('vectra_last_alert') || '';
     let audioCtx = null;
+
+    function computeLiveLevels(s, totalQty) {
+      const ltp = parseFloat(s.ltp) || 100;
+      const isSell = (s.side || 'BUY').toUpperCase() === 'SELL';
+      const isScalp = Boolean(s.is_scalp);
+      const entry = Number((ltp * (isSell ? 0.998 : 1.002)).toFixed(2));
+      const tPct = isScalp ? 0.08 : (s.is_fno ? 0.22 : 0.025);
+      const slPct = isScalp ? 0.05 : (s.is_fno ? 0.11 : 0.013);
+      const target = isSell
+        ? Number((entry * (1 - tPct)).toFixed(2))
+        : Number((entry * (1 + tPct)).toFixed(2));
+      const sl = isSell
+        ? Number((entry * (1 + slPct)).toFixed(2))
+        : Number((entry * (1 - slPct)).toFixed(2));
+
+      const rawLivePnl = isSell ? (entry - ltp) * totalQty : (ltp - entry) * totalQty;
+      const livePnl = Math.round(rawLivePnl);
+      const maxProfit = Math.round(Math.abs((target - entry) * totalQty));
+      const maxLoss = Math.round(Math.abs((entry - sl) * totalQty));
+
+      return { entry, target, sl, livePnl, maxProfit, maxLoss };
+    }
 
     function syncAlertButtons() {
       const ringBtn = document.getElementById('btn-ring');
@@ -305,7 +337,7 @@
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification('VectraEdge Verified Signal (' + prob + '%)', {
-            body: (topSig.symbol || '') + ' - Entry ₹' + topSig.entry + ' - Target ₹' + topSig.target,
+            body: (topSig.symbol || '') + ' - LTP ₹' + topSig.ltp,
             silent: !ringEnabled
           });
         } catch (e) {}
@@ -356,10 +388,10 @@
       }
     }
 
-    function calcInvestment(s, units) {
+    function calcInvestment(s, units, liveEntry) {
       const lotSize = s.is_fno ? (s.lot_size || 1) : 1;
       const totalQty = units * lotSize;
-      const price = parseFloat(s.entry) || parseFloat(s.ltp) || 100;
+      const price = parseFloat(liveEntry || s.entry || s.ltp) || 100;
       return {
         totalQty,
         investAmt: Math.round(totalQty * price)
@@ -530,9 +562,6 @@
             const distSteps = Math.abs(off);
             const trendShift = optType === 'CE' ? trendBias : -trendBias;
             const ltp = Number(Math.max(38, meta.baseLtp - distSteps * (meta.step * 0.22) + (optType === 'CE' ? 5 : -4) + trendShift * 2.2).toFixed(2));
-            const entry = Number((ltp + 1.1).toFixed(2));
-            const target = Number((entry * 1.22).toFixed(2));
-            const sl = Number((entry * 0.89).toFixed(2));
             const probWave = 87 - (distSteps * 3) - (tIdx * 3) + Math.round(trendShift * 1.5) - ((idxPos + oIdx + dayNum) % 4);
             const winProb = Math.min(89, Math.max(54, probWave));
             const volRatio = Number((1.05 + ((distSteps === 0 ? 0.45 : 0.15) + ((oIdx + dayNum) % 4) * 0.12)).toFixed(2));
@@ -551,17 +580,11 @@
               backtest_win_rate: btWin,
               vol_ratio: volRatio,
               rule_passed: rulePassed,
-              entry,
-              target,
-              sl,
               lot_size: meta.lot
             }));
 
             if (distSteps <= 3) {
               const sLtp = Number(Math.max(48, ltp * 0.96).toFixed(2));
-              const sEntry = Number((sLtp + 0.5).toFixed(2));
-              const sTarget = Number((sEntry * 1.08).toFixed(2));
-              const sSl = Number((sEntry * 0.95).toFixed(2));
               const sWin = Math.min(88, Math.max(58, winProb + 2));
               list.push(normalizeSignal({
                 symbol: idxName + ' ' + strike + ' ' + optType + ' [SCALP]',
@@ -575,9 +598,6 @@
                 backtest_win_rate: Math.min(87, btWin + 1),
                 vol_ratio: Math.max(1.25, volRatio),
                 rule_passed: Boolean(sWin >= 64 && Math.max(1.25, volRatio) >= 1.2),
-                entry: sEntry,
-                target: sTarget,
-                sl: sSl,
                 lot_size: meta.lot
               }));
             }
@@ -593,12 +613,6 @@
         const volRatio = Number((1.05 + (((sIdx + dayNum) % 8) * 0.14)).toFixed(2));
         const btWin = Math.min(86, Math.max(55, winProb - 1));
         const rulePassed = Boolean(btWin >= 62 && volRatio >= 1.15);
-        const pct = mode === 'Intraday' ? 0.018 : 0.042;
-        const entry = Number((ltp + (side === 'BUY' ? 0.4 : -0.4)).toFixed(2));
-        const diffT = Math.max(1.5, Number((entry * pct).toFixed(2)));
-        const diffSL = Math.max(0.8, Number((entry * pct * 0.52).toFixed(2)));
-        const target = side === 'BUY' ? Number((entry + diffT).toFixed(2)) : Number((entry - diffT).toFixed(2));
-        const sl = side === 'BUY' ? Number((entry - diffSL).toFixed(2)) : Number((entry + diffSL).toFixed(2));
 
         list.push(normalizeSignal({
           symbol: sym + ' [' + mode + ']',
@@ -612,9 +626,6 @@
           backtest_win_rate: btWin,
           vol_ratio: volRatio,
           rule_passed: rulePassed,
-          entry,
-          target,
-          sl,
           lot_size: 1
         }));
       });
@@ -641,9 +652,9 @@
       } catch (e) {}
     }
 
-    function buildStrategiesForSignal(s, totalQty) {
-      const baseP = Math.round(Math.abs((s.target - s.entry) * totalQty));
-      const baseL = Math.round(Math.abs((s.entry - s.sl) * totalQty));
+    function buildStrategiesForSignal(s, totalQty, liveLevels) {
+      const baseP = liveLevels.maxProfit;
+      const baseL = liveLevels.maxLoss;
       const pPct = s.win_prob || 72;
       const lPct = 100 - pPct;
       const parts = (s.symbol || 'NIFTY 25250 CE').split(' ');
@@ -723,6 +734,8 @@
       s.index_name = idx;
       s.is_scalp = Boolean(s.is_scalp || nameUpper.includes('[SCALP]') || nameUpper.includes('SCALP'));
       s.date = s.date || window._todayKey || '2026-11-19';
+      s.side = ((s.side || 'BUY').toUpperCase() === 'SELL') ? 'SELL' : 'BUY';
+      s.ltp = Number((parseFloat(s.ltp) || 100).toFixed(2));
 
       const win = parseInt(s.win_prob || 68, 10);
       const volRatio = parseFloat(s.vol_ratio || 1.2);
@@ -731,22 +744,10 @@
       s.vol_ratio = volRatio;
       s.rule_passed = (typeof s.rule_passed === 'boolean') ? s.rule_passed : Boolean(btWin >= 62 && volRatio >= 1.15);
 
-      const entry = parseFloat(s.entry) || parseFloat(s.ltp) || 100;
-      let target = parseFloat(s.target) || entry * 1.03;
-      let sl = parseFloat(s.sl) || entry * 0.985;
-      const diffT = Math.abs(target - entry) || Math.max(1.5, entry * 0.025);
-      const diffSL = Math.abs(entry - sl) || Math.max(0.8, entry * 0.012);
-
-      if ((s.side || 'BUY').toUpperCase() === 'SELL') {
-        s.side = 'SELL';
-        s.target = Number((entry - diffT).toFixed(2));
-        s.sl = Number((entry + diffSL).toFixed(2));
-      } else {
-        s.side = 'BUY';
-        s.target = Number((entry + diffT).toFixed(2));
-        s.sl = Number((entry - diffSL).toFixed(2));
-      }
-      s.entry = Number(entry.toFixed(2));
+      const lv = computeLiveLevels(s, s.is_fno ? (s.lot_size || 1) : 1);
+      s.entry = lv.entry;
+      s.target = lv.target;
+      s.sl = lv.sl;
       return s;
     }
 
@@ -762,12 +763,6 @@
         })));
 
         if (!isAlreadyScalp) {
-          const entry = parseFloat(st.entry) || parseFloat(st.ltp) || 100;
-          const isSell = (st.side || 'BUY').toUpperCase() === 'SELL';
-          const move = Math.max(0.8, Number((entry * 0.008).toFixed(2)));
-          const risk = Math.max(0.5, Number((entry * 0.0045).toFixed(2)));
-          const sTarget = isSell ? Number((entry - move).toFixed(2)) : Number((entry + move).toFixed(2));
-          const sSl = isSell ? Number((entry + risk).toFixed(2)) : Number((entry - risk).toFixed(2));
           const sWin = Math.min(89, Math.max(56, (st.win_prob || 65) + 2));
           const volR = Math.max(1.2, parseFloat(st.vol_ratio || 1.25));
 
@@ -777,15 +772,12 @@
             is_fno: false,
             is_scalp: true,
             side: st.side || 'BUY',
-            ltp: st.ltp || entry,
+            ltp: st.ltp || 100,
             win_prob: sWin,
             loss_prob: 100 - sWin,
             backtest_win_rate: Math.min(87, sWin),
             vol_ratio: volR,
             rule_passed: Boolean(sWin >= 62 && volR >= 1.15),
-            entry,
-            target: sTarget,
-            sl: sSl,
             lot_size: 1
           }));
         }
@@ -824,12 +816,126 @@
           allSignals = merged;
           localStorage.setItem(CACHE_KEY, JSON.stringify(allSignals));
           saveTodaySnapshot(allSignals);
+          syncLiveTradesWithMarket(merged);
           const sortedAll = merged.filter(x => !x.is_scalp && x.rule_passed).sort((a, b) => (b.win_prob || 0) - (a.win_prob || 0));
           triggerStrongAlert(sortedAll[0]);
         }
       } catch (e) {
         console.error(e);
       }
+      renderAll();
+    }
+
+    function syncLiveTradesWithMarket(pool) {
+      if (!pool || !pool.length || !myTrades.length) return;
+      const byName = {};
+      pool.forEach(s => {
+        const clean = (s.symbol || '').split('(')[0].trim().toUpperCase();
+        byName[clean] = s;
+      });
+      myTrades = myTrades.map(t => {
+        if (t.status === 'CLOSED') return t;
+        const match = byName[(t.cleanName || '').toUpperCase()];
+        if (!match) return t;
+        const lv = computeLiveLevels(match, t.units || 1);
+        return Object.assign({}, t, {
+          ltp: match.ltp,
+          entry: lv.entry,
+          target: lv.target,
+          sl: lv.sl,
+          estPnl: lv.livePnl
+        });
+      });
+      localStorage.setItem('vectra_trades', JSON.stringify(myTrades));
+    }
+
+    function calcLocalBacktest(sym, closes, vols, side) {
+      const n = closes.length;
+      if (n < 15) return { symbol: sym, side, trades_tested: 0, win_rate: 0, vol_ratio: 0, rsi: 50, passed: false };
+
+      const ema = (arr, p) => {
+        const k = 2 / (p + 1);
+        const out = [arr[0]];
+        for (let i = 1; i < arr.length; i++) out.push(arr[i] * k + out[i - 1] * (1 - k));
+        return out;
+      };
+      const rsiArr = (arr, p = 14) => {
+        const out = [50];
+        let g = [], l = [];
+        for (let i = 1; i < arr.length; i++) {
+          const d = arr[i] - arr[i - 1];
+          g.push(Math.max(0, d));
+          l.push(Math.max(0, -d));
+          if (i < p) out.push(50);
+          else {
+            const ag = g.slice(-p).reduce((a, b) => a + b, 0) / p;
+            const al = (l.slice(-p).reduce((a, b) => a + b, 0) / p) || 1e-6;
+            out.push(Number((100 - 100 / (1 + ag / al)).toFixed(1)));
+          }
+        }
+        return out;
+      };
+
+      const e20 = ema(closes, 20);
+      const e50 = ema(closes, 50);
+      const r14 = rsiArr(closes, 14);
+      let wins = 0, tested = 0;
+
+      for (let i = 10; i < n - 1; i++) {
+        const vAvg = (vols.slice(Math.max(0, i - 10), i).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(10, i))) || 1;
+        const vr = (vols[i] || vAvg) / vAvg;
+        const ok = side === 'BUY'
+          ? (closes[i] >= e20[i] && e20[i] >= e50[i] * 0.995 && r14[i] >= 50 && vr >= 1.1)
+          : (closes[i] <= e20[i] && e20[i] <= e50[i] * 1.005 && r14[i] <= 52 && vr >= 1.1);
+        if (ok) {
+          tested++;
+          const ret = side === 'BUY' ? (closes[i + 1] - closes[i]) : (closes[i] - closes[i + 1]);
+          if (ret > 0) wins++;
+        }
+      }
+
+      const vBase = (vols.slice(-11, -1).reduce((a, b) => a + b, 0) / 10) || 1;
+      const volRatio = Number(((vols[n - 1] || vBase) / vBase).toFixed(2));
+      const winRate = tested > 0 ? Number(((wins / tested) * 100).toFixed(1)) : 0;
+      const ltp = Number(closes[n - 1].toFixed(2));
+      const passed = tested >= 2 && winRate >= 60 && volRatio >= 1.05;
+      const entry = Number((ltp * (side === 'BUY' ? 1.002 : 0.998)).toFixed(2));
+      const target = Number((entry * (side === 'BUY' ? 1.022 : 0.978)).toFixed(2));
+      const sl = Number((entry * (side === 'BUY' ? 0.988 : 1.012)).toFixed(2));
+
+      return { symbol: sym, side, ltp, entry, target, sl, trades_tested: tested, win_rate: winRate, vol_ratio: volRatio, rsi: r14[n - 1], passed };
+    }
+
+    async function runBacktestScan() {
+      const inp = document.getElementById('bt-sym-input');
+      const sideSel = document.getElementById('bt-side-sel');
+      if (inp) btSymbols = inp.value;
+      if (sideSel) btSide = sideSel.value;
+
+      const rawSyms = btSymbols.split(',').map(s => s.trim()).filter(Boolean);
+      btStatus = 'Scanning ' + rawSyms.length + ' symbols...';
+      renderAll();
+
+      const out = [];
+      for (const sym of rawSyms) {
+        const ticker = (sym.startsWith('^') || sym.endsWith('.NS')) ? sym : (sym + '.NS');
+        try {
+          const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ticker) + '?interval=1d&range=6mo';
+          const res = await fetch(url);
+          const json = await res.json();
+          const r = json.chart.result[0];
+          const q = r.indicators.quote[0];
+          const closes = (q.close || []).filter(x => x !== null && x !== undefined);
+          const vols = (q.volume || []).filter(x => x !== null && x !== undefined);
+          out.push(calcLocalBacktest(sym, closes, vols, btSide));
+        } catch (e) {
+          out.push({ symbol: sym, side: btSide, trades_tested: 0, win_rate: 0, vol_ratio: 0, rsi: 50, passed: false });
+        }
+      }
+
+      out.sort((a, b) => (b.passed - a.passed) || (b.win_rate - a.win_rate));
+      btResults = out;
+      btStatus = 'Scanned ' + out.length + ' symbols (' + out.filter(x => x.passed).length + ' PASSED).';
       renderAll();
     }
 
@@ -844,6 +950,9 @@
       document.getElementById('fno-filters').classList.toggle('hidden', tab !== 'fno');
       document.getElementById('stock-filters').classList.toggle('hidden', tab !== 'stocks');
       renderAll();
+      if (tab === 'backtest' && !btResults.length) {
+        runBacktestScan();
+      }
     }
 
     function setIndexMode(idxName) {
@@ -997,6 +1106,51 @@
       updateHeaderCounts();
       const container = document.getElementById('main-list');
 
+      if (currentTab === 'backtest') {
+        const shown = btOnlyPassed ? btResults.filter(x => x.passed) : btResults;
+        container.innerHTML =
+          '<div class="card-bg rounded-xl p-3 space-y-2 text-xs">' +
+            '<div class="flex gap-2">' +
+              '<input id="bt-sym-input" type="text" value="' + btSymbols.replace(/"/g, '&quot;') + '" class="flex-1 bg-[#0b0e14] border border-[#2a3449] rounded-lg px-2.5 py-1.5 text-white" />' +
+              '<button onclick="runBacktestScan()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold">Scan</button>' +
+            '</div>' +
+            '<div class="flex items-center justify-between">' +
+              '<label class="flex items-center gap-1.5 text-slate-300">' +
+                '<input type="checkbox" ' + (btOnlyPassed ? 'checked' : '') + ' onchange="btOnlyPassed = this.checked; renderAll();" />' +
+                '<span>Only PASSED rules</span>' +
+              '</label>' +
+              '<select id="bt-side-sel" onchange="runBacktestScan()" class="bg-[#0b0e14] border border-[#2a3449] rounded-lg px-2 py-1 text-white">' +
+                '<option value="BUY" ' + (btSide === 'BUY' ? 'selected' : '') + '>BUY Rules</option>' +
+                '<option value="SELL" ' + (btSide === 'SELL' ? 'selected' : '') + '>SELL Rules</option>' +
+              '</select>' +
+            '</div>' +
+          '</div>' +
+          '<div class="text-[11px] text-slate-400">' + btStatus + '</div>' +
+          (shown.length
+            ? shown.map(item =>
+                '<div class="card-bg rounded-xl p-3 text-xs space-y-1.5">' +
+                  '<div class="flex justify-between items-center">' +
+                    '<span class="font-bold text-white text-sm">' + item.symbol + '</span>' +
+                    '<span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (item.passed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400') + '">' + (item.passed ? 'PASSED' : 'FILTERED') + '</span>' +
+                  '</div>' +
+                  '<div class="flex justify-between text-slate-300">' +
+                    '<span>BT Win: <strong class="text-emerald-400">' + item.win_rate + '%</strong> (' + item.trades_tested + ' trades)</span>' +
+                    '<span>Vol: <strong class="text-cyan-300">' + item.vol_ratio + 'x</strong></span>' +
+                    '<span>RSI: <strong class="text-amber-300">' + item.rsi + '</strong></span>' +
+                  '</div>' +
+                  (item.ltp ? '<div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-[#1e2536]">' +
+                    '<span>LTP: ₹' + item.ltp + '</span>' +
+                    '<span>Entry: ₹' + item.entry + '</span>' +
+                    '<span class="text-emerald-400">Tgt: ₹' + item.target + '</span>' +
+                    '<span class="text-rose-400">SL: ₹' + item.sl + '</span>' +
+                  '</div>' : '') +
+                '</div>'
+              ).join('')
+            : '<div class="card-bg rounded-xl p-4 text-center text-xs text-slate-400">No setups passed all historical indicator + volume rules right now.</div>'
+          );
+        return;
+      }
+
       if (currentTab === 'trades') {
         if (!myTrades.length) {
           container.innerHTML = '<div class="card-bg rounded-xl p-6 text-center text-slate-400 text-sm">No trades logged yet. Tap any signal to accept and track live.</div>';
@@ -1005,23 +1159,27 @@
         const totalPnl = myTrades.reduce((acc, t) => acc + (t.estPnl || 0), 0);
         container.innerHTML =
           '<div class="card-bg rounded-xl p-3 flex justify-between items-center">' +
-            '<span class="text-xs text-slate-400">EOD Projected Net P&L</span>' +
+            '<span class="text-xs text-slate-400">Live Net P&L</span>' +
             '<span class="text-base font-bold ' + (totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (totalPnl >= 0 ? '+' : '') + '₹' + totalPnl.toLocaleString('en-IN') + '</span>' +
           '</div>' +
           myTrades.map((t, idx) => {
             const isClosed = t.status === 'CLOSED';
+            const pnl = t.estPnl || 0;
             return '<div class="card-bg rounded-xl p-3.5 space-y-1.5">' +
               '<div class="flex justify-between items-center">' +
                 '<div class="flex items-center gap-2">' +
                   '<span class="font-bold text-white text-sm">' + t.cleanName + '</span>' +
                   '<span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (isClosed ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400') + '">' + (isClosed ? 'CLOSED' : 'LIVE') + '</span>' +
                 '</div>' +
-                (!isClosed ? '<button onclick="closeTrade(' + idx + ')" class="text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-semibold">Close Trade</button>' : '') +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="text-xs font-bold ' + (pnl >= 0 ? 'text-emerald-400' : 'text-rose-400') + '">' + (pnl >= 0 ? '+' : '') + '₹' + pnl.toLocaleString('en-IN') + '</span>' +
+                  (!isClosed ? '<button onclick="closeTrade(' + idx + ')" class="text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-semibold">Exit</button>' : '') +
+                '</div>' +
               '</div>' +
               '<div class="text-xs text-slate-300 flex justify-between">' +
                 '<span>Entry: ₹' + t.entry + '</span>' +
-                '<span class="text-emerald-400">Target: ₹' + t.target + '</span>' +
-                '<span class="text-rose-400">SL: ₹' + t.sl + '</span>' +
+                '<span class="text-emerald-400">Exit Tgt: ₹' + t.target + '</span>' +
+                '<span class="text-rose-400">Exit SL: ₹' + t.sl + '</span>' +
               '</div>' +
               (t.investAmt ? '<div class="text-[11px] text-amber-300">Investment: ₹' + t.investAmt.toLocaleString('en-IN') + ' (' + t.units + (t.isFno ? ' Lot' : ' Qty') + ')</div>' : '') +
             '</div>';
@@ -1041,15 +1199,16 @@
       container.innerHTML = filtered.map((s, i) => {
         const key = getSigKey(s);
         const units = getUnits(s);
-        const { totalQty, investAmt } = calcInvestment(s, units);
+        const lotSize = s.is_fno ? (s.lot_size || 1) : 1;
+        const totalQty = units * lotSize;
+        const lv = computeLiveLevels(s, totalQty);
+        const { investAmt } = calcInvestment(s, units, lv.entry);
         const win = s.win_prob || 68;
         const loss = s.loss_prob || (100 - win);
         const btWin = s.backtest_win_rate || win;
         const volR = s.vol_ratio || 1.2;
         const isStrongTop = (win === topProb && win >= 75);
         const cleanName = (s.symbol || '').split('(')[0].trim();
-        const maxProfit = Math.round(Math.abs((s.target - s.entry) * totalQty));
-        const maxLoss = Math.round(Math.abs((s.entry - s.sl) * totalQty));
         const unitLabel = s.is_fno ? 'Lots' : 'Qty';
         const scalpBadge = s.is_scalp ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">SCALP ⚡</span>' : '';
         const strongBadge = isStrongTop ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-300/25 text-emerald-200 border border-emerald-300/50">STRONGEST</span>' : '';
@@ -1064,16 +1223,16 @@
                 scalpBadge +
               '</div>' +
               '<div class="mt-1 flex items-center gap-2 text-xs font-semibold">' +
-                '<span class="text-emerald-400">Profit: ' + win + '% (+₹' + maxProfit.toLocaleString('en-IN') + ')</span>' +
+                '<span class="text-emerald-400">Profit: ' + win + '% (+₹' + lv.maxProfit.toLocaleString('en-IN') + ')</span>' +
                 '<span class="text-slate-600">|</span>' +
-                '<span class="text-rose-400">Loss: ' + loss + '% (-₹' + maxLoss.toLocaleString('en-IN') + ')</span>' +
+                '<span class="text-rose-400">Loss: ' + loss + '% (-₹' + lv.maxLoss.toLocaleString('en-IN') + ')</span>' +
               '</div>' +
               '<div class="mt-1 flex items-center gap-2 text-[10px] text-cyan-300 font-semibold">' +
                 '<span>BT Win: ' + btWin + '%</span>' +
                 '<span class="text-slate-600">•</span>' +
                 '<span>Vol: ' + volR + 'x</span>' +
                 '<span class="text-slate-600">•</span>' +
-                '<span class="text-emerald-300">IND + VOL PASS</span>' +
+                '<span class="' + (lv.livePnl >= 0 ? 'text-emerald-300' : 'text-rose-300') + '">Live P&L: ' + (lv.livePnl >= 0 ? '+' : '') + '₹' + lv.livePnl.toLocaleString('en-IN') + '</span>' +
               '</div>' +
             '</div>' +
             '<div class="text-right">' +
@@ -1082,9 +1241,9 @@
             '</div>' +
           '</div>' +
           '<div class="mt-3 grid grid-cols-3 gap-2 bg-[#0b0e14] rounded-lg p-2 text-center text-xs">' +
-            '<div><div class="text-[10px] text-slate-400">Entry</div><div class="font-semibold text-white">₹' + s.entry + '</div></div>' +
-            '<div><div class="text-[10px] text-slate-400">Target</div><div class="font-semibold text-emerald-400">₹' + s.target + '</div></div>' +
-            '<div><div class="text-[10px] text-slate-400">Stop Loss</div><div class="font-semibold text-rose-400">₹' + s.sl + '</div></div>' +
+            '<div><div class="text-[10px] text-slate-400">Live Entry</div><div class="font-semibold text-white">₹' + lv.entry + '</div></div>' +
+            '<div><div class="text-[10px] text-slate-400">Exit Target</div><div class="font-semibold text-emerald-400">₹' + lv.target + '</div></div>' +
+            '<div><div class="text-[10px] text-slate-400">Exit SL</div><div class="font-semibold text-rose-400">₹' + lv.sl + '</div></div>' +
           '</div>' +
           '<div onclick="event.stopPropagation()" class="mt-2.5 flex items-center justify-between gap-2 bg-[#0b0e14] rounded-lg px-2.5 py-2 border border-[#1e2536] text-xs">' +
             '<div class="flex items-center gap-1.5">' +
@@ -1099,8 +1258,8 @@
             '</div>' +
           '</div>' +
           '<div class="mt-2 flex justify-between text-[11px] text-slate-300">' +
-            '<span>Max Profit: <strong class="text-emerald-400">+₹' + maxProfit.toLocaleString('en-IN') + '</strong></span>' +
-            '<span>Max Loss: <strong class="text-rose-400">-₹' + maxLoss.toLocaleString('en-IN') + '</strong></span>' +
+            '<span>Max Profit: <strong class="text-emerald-400">+₹' + lv.maxProfit.toLocaleString('en-IN') + '</strong></span>' +
+            '<span>Max Loss: <strong class="text-rose-400">-₹' + lv.maxLoss.toLocaleString('en-IN') + '</strong></span>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1109,14 +1268,15 @@
     function refreshModalDynamic(s) {
       const key = getSigKey(s);
       const units = getUnits(s);
-      const { totalQty, investAmt } = calcInvestment(s, units);
+      const lotSize = s.is_fno ? (s.lot_size || 1) : 1;
+      const totalQty = units * lotSize;
+      const lv = computeLiveLevels(s, totalQty);
+      const { investAmt } = calcInvestment(s, units, lv.entry);
       const win = s.win_prob || 68;
       const loss = s.loss_prob || (100 - win);
-      const maxP = Math.round(Math.abs((s.target - s.entry) * totalQty));
-      const maxL = Math.round(Math.abs((s.entry - s.sl) * totalQty));
       const unitLabel = s.is_fno ? 'Lots' : 'Qty';
 
-      document.getElementById('modal-sub').textContent = 'Profit ' + win + '% (+₹' + maxP.toLocaleString('en-IN') + ') | Loss ' + loss + '% (-₹' + maxL.toLocaleString('en-IN') + ') - BT ' + (s.backtest_win_rate || win) + '% | Vol ' + (s.vol_ratio || 1.2) + 'x';
+      document.getElementById('modal-sub').textContent = 'Entry ₹' + lv.entry + ' • Exit Tgt ₹' + lv.target + ' • Exit SL ₹' + lv.sl + ' • Live P&L ' + (lv.livePnl >= 0 ? '+' : '') + '₹' + lv.livePnl.toLocaleString('en-IN');
 
       document.getElementById('modal-lot-box').innerHTML =
         '<div class="flex items-center gap-1.5">' +
@@ -1133,17 +1293,17 @@
       document.getElementById('modal-pnl').innerHTML =
         '<div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">' +
           '<div class="text-[10px] text-slate-400">Max Profit (' + win + '%)</div>' +
-          '<div class="text-sm font-bold text-emerald-400">+₹' + maxP.toLocaleString('en-IN') + '</div>' +
+          '<div class="text-sm font-bold text-emerald-400">+₹' + lv.maxProfit.toLocaleString('en-IN') + '</div>' +
         '</div>' +
         '<div class="bg-[#0b0e14] p-2.5 rounded-lg border border-[#1e2536]">' +
           '<div class="text-[10px] text-slate-400">Max Loss (' + loss + '%)</div>' +
-          '<div class="text-sm font-bold text-rose-400">-₹' + maxL.toLocaleString('en-IN') + '</div>' +
+          '<div class="text-sm font-bold text-rose-400">-₹' + lv.maxLoss.toLocaleString('en-IN') + '</div>' +
         '</div>';
 
       const stratsSection = document.getElementById('modal-strats-section');
       if (s.is_fno) {
         stratsSection.classList.remove('hidden');
-        const strats = buildStrategiesForSignal(s, totalQty);
+        const strats = buildStrategiesForSignal(s, totalQty, lv);
         window._currentStrats = strats;
         document.getElementById('modal-legs').innerHTML = strats.map((st, idx) =>
           '<div onclick="selectStrategy(' + idx + ')" class="bg-[#0b0e14] hover:border-emerald-500/50 p-2.5 rounded-lg border border-[#1e2536] space-y-1 text-xs cursor-pointer transition">' +
@@ -1206,15 +1366,18 @@
     function acceptCurrentSignal() {
       if (!selectedSignal) return;
       const units = getUnits(selectedSignal);
-      const { totalQty, investAmt } = calcInvestment(selectedSignal, units);
+      const lotSize = selectedSignal.is_fno ? (selectedSignal.lot_size || 1) : 1;
+      const totalQty = units * lotSize;
+      const lv = computeLiveLevels(selectedSignal, totalQty);
+      const { investAmt } = calcInvestment(selectedSignal, units, lv.entry);
       const baseName = (selectedSignal.symbol || '').split('(')[0].trim();
       const label = activeStrategy ? (baseName + ' - ' + activeStrategy.name) : baseName;
-      const estPnl = activeStrategy ? activeStrategy.profitAmt : Math.round(Math.abs((selectedSignal.target - selectedSignal.entry) * totalQty));
+      const estPnl = activeStrategy ? activeStrategy.profitAmt : lv.livePnl;
       myTrades.unshift({
         cleanName: label,
-        entry: selectedSignal.entry,
-        target: selectedSignal.target,
-        sl: selectedSignal.sl,
+        entry: lv.entry,
+        target: lv.target,
+        sl: lv.sl,
         units,
         isFno: Boolean(selectedSignal.is_fno),
         investAmt,
@@ -1262,7 +1425,7 @@
     saveTodaySnapshot(allSignals);
     renderAll();
     fetchSignals();
-    setInterval(fetchSignals, 30000);
+    setInterval(fetchSignals, 15000);
   </script>
 </body>
 </html>
