@@ -1,4 +1,4 @@
-﻿import os, sys, json, pathlib
+import os, sys, json, pathlib
 from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
@@ -101,3 +101,26 @@ if __name__ == "__main__":
     print(f"VectraEdge live on 0.0.0.0:{port}", flush=True)
     server.serve_forever()
 
+
+
+# --- UPSTOX LIVE OPTION CHAIN & AI ROUTE ---
+try:
+    from backend.upstox_feed import fetch_live_option_setups
+    from backend.ai_engine import evaluate_combined_ai_signal
+except Exception:
+    from upstox_feed import fetch_live_option_setups
+    from ai_engine import evaluate_combined_ai_signal
+
+
+@app.get("/api/upstox/live")
+def api_upstox_live():
+    payload = fetch_live_option_setups()
+    enriched = []
+    for item in payload.get("options", []):
+        ai_res = evaluate_combined_ai_signal(item)
+        item["ai_score"] = ai_res["ai_score"]
+        item["ai_verdict"] = ai_res["ai_verdict"]
+        item["ai_suggestion"] = ai_res["ai_suggestion"]
+        enriched.append(item)
+    payload["options"] = enriched
+    return payload
