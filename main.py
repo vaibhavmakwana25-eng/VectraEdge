@@ -14,6 +14,27 @@ from zerodha_feed import get_market_candidates, is_zerodha_configured
 
 orchestrator = MainAgentOrchestrator()
 
+try:
+    from backend.upstox_feed import fetch_live_option_setups
+    from backend.ai_engine import evaluate_combined_ai_signal
+except Exception:
+    from upstox_feed import fetch_live_option_setups
+    from ai_engine import evaluate_combined_ai_signal
+
+@app.get("/api/upstox/live")
+def api_upstox_live():
+    payload = fetch_live_option_setups()
+    enriched = []
+    for item in payload.get("options", []):
+        ai_res = evaluate_combined_ai_signal(item)
+        item["ai_score"] = ai_res["ai_score"]
+        item["ai_verdict"] = ai_res["ai_verdict"]
+        item["ai_suggestion"] = ai_res["ai_suggestion"]
+        enriched.append(item)
+    payload["options"] = enriched
+    return payload
+
+
 class VectraHandler(BaseHTTPRequestHandler):
     def _send_json(self, data, status=200):
         body = json.dumps(data).encode("utf-8")
@@ -102,25 +123,3 @@ if __name__ == "__main__":
     server.serve_forever()
 
 
-
-# --- UPSTOX LIVE OPTION CHAIN & AI ROUTE ---
-try:
-    from backend.upstox_feed import fetch_live_option_setups
-    from backend.ai_engine import evaluate_combined_ai_signal
-except Exception:
-    from upstox_feed import fetch_live_option_setups
-    from ai_engine import evaluate_combined_ai_signal
-
-
-@app.get("/api/upstox/live")
-def api_upstox_live():
-    payload = fetch_live_option_setups()
-    enriched = []
-    for item in payload.get("options", []):
-        ai_res = evaluate_combined_ai_signal(item)
-        item["ai_score"] = ai_res["ai_score"]
-        item["ai_verdict"] = ai_res["ai_verdict"]
-        item["ai_suggestion"] = ai_res["ai_suggestion"]
-        enriched.append(item)
-    payload["options"] = enriched
-    return payload
